@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from base64 import b64decode, b64encode
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
@@ -118,6 +119,10 @@ class Device:
     statistics_datapoints: list[str] = field(default_factory=list)
     settings_datapoints: list[str] = field(default_factory=list)
     catalog_datapoints: list[str] = field(default_factory=list)
+    #: Per-model monitor-bit policy from the device map: ``exclude`` (bits the
+    #: model does not have) and ``disabled_by_default`` (bits that may exist
+    #: but are unverified). Empty = every documented bit applies.
+    monitor_bits: dict[str, list[str]] = field(default_factory=dict)
     model_ref: dict[str, Any] = field(default_factory=dict)
     # Recipe index -> beverage id, in machine order (verified Soul table).
     recipe_beverage_order: list[int] = field(default_factory=list)
@@ -153,6 +158,16 @@ class Device:
     # Unix time of the last registration/refresh this instance sent for a
     # registration it saw confirmed (0 = none).
     _app_id_refreshed_at: float = field(default=0.0, init=False, repr=False)
+    #: Inside the refresh window an explicit refresh frame is sent at most
+    #: this often; every frame carrying our id extends the registration too
+    #: (a command sent with an app's id kept that registration alive).
+    app_id_refresh_min_seconds: float = 60.0
+    _app_id_last_refresh_frame: float = field(default=0.0, init=False, repr=False)
+    # Serialises registration and session announces: Home Assistant runs
+    # several executor jobs at once on setup, and each one used to register.
+    _app_id_lock: threading.RLock = field(
+        default_factory=threading.RLock, init=False, repr=False, compare=False
+    )
 
     @classmethod
     def from_map(
@@ -237,6 +252,7 @@ class Device:
             statistics_datapoints=list(map_data.get("statistics_datapoints") or []),
             settings_datapoints=list(map_data.get("settings_datapoints") or []),
             catalog_datapoints=list(map_data.get("catalog_datapoints") or []),
+            monitor_bits=dict(map_data.get("monitor_bits") or {}),
             model_ref=map_data.get("model_ref") or {},
             recipe_beverage_order=list(map_data.get("recipe_beverage_order") or []),
             **kwargs,
@@ -417,6 +433,10 @@ class Device:
             return None
 
     def _ensure_app_id(self) -> str | None:
+        with self._app_id_lock:
+            return self._ensure_app_id_locked()
+
+    def _ensure_app_id_locked(self) -> str | None:
         """Return the app id to send with, registering our own when needed.
 
         The cloud copy of ``app_id`` cannot prove a live registration. When
@@ -439,7 +459,11 @@ class Device:
             and self._app_id_refreshed_at
             and now - self._app_id_refreshed_at < self.app_id_refresh_seconds
         ):
-            self._refresh_app_id()
+            if now - self._app_id_last_refresh_frame >= self.app_id_refresh_min_seconds:
+                self._refresh_app_id()
+                self._app_id_last_refresh_frame = now
+            # The frame that follows carries our id and extends the
+            # registration as well.
             self._app_id_refreshed_at = now
             return APP_ID_HEX
 
@@ -450,7 +474,7 @@ class Device:
             else self.app_id_confirm_seconds
         )
         if self._register_and_confirm(timeout):
-            self._app_id_refreshed_at = time.time()
+            self._app_id_refreshed_at = self._app_id_last_refresh_frame = time.time()
             return APP_ID_HEX
 
         value, _ = self._app_id_property()
@@ -459,7 +483,7 @@ class Device:
             # unchanged value (e.g. after a restart of this process). The
             # registration was renewed anyway; use our id.
             logger.info("app id registration renewed without machine echo")
-            self._app_id_refreshed_at = time.time()
+            self._app_id_refreshed_at = self._app_id_last_refresh_frame = time.time()
             return APP_ID_HEX
         if isinstance(value, str) and value != "0":
             try:
@@ -616,15 +640,42 @@ class Device:
 
     def _send_gated(self, frame: bytes) -> Any:
         """Session-gated write path (0x83/0x84/0x90/0xA9 frames)."""
-        self._session().ensure_fresh()
+        with self._app_id_lock:
+            self._session().ensure_fresh()
         return self.send_frame(frame)
 
     # --- response mailbox ---
     def _pop_response_frame(self) -> bytes | None:
-        pop = getattr(self.transport, "pop_response", None)
+        pop = self._mailbox()
         if pop is None:
             return None
-        return pop()
+        try:
+            return pop()
+        except NotImplementedError:
+            return None
+
+    def _transport_capability(
+        self, method: str, flag: str
+    ) -> Callable[..., Any] | None:
+        """The transport's optional ``method``, or ``None`` when unsupported.
+
+        ``DeviceTransport`` declares every optional member, so presence alone
+        proves nothing; a transport opts out with a ``supports_*`` flag
+        (``CloudTransport``: no response mailbox, no property requests).
+        """
+        if getattr(self.transport, flag, True) is False:
+            return None
+        return getattr(self.transport, method, None)
+
+    def _mailbox(self) -> Callable[[], bytes | None] | None:
+        """``pop_response`` when the transport has a response mailbox."""
+        return self._transport_capability("pop_response", "supports_mailbox")
+
+    def _property_requester(self) -> Callable[[str], Any] | None:
+        """``request_property`` when the transport can trigger republishes."""
+        return self._transport_capability(
+            "request_property", "supports_property_requests"
+        )
 
     def _wait_answer(
         self, request_id: int, *, timeout: float | None = None
@@ -633,7 +684,10 @@ class Device:
 
         Frames echoing a different request id are stale and dropped; a
         ``0xE1`` frame raises ``TimeoutError`` (machine-side abort).
+        Transports without a mailbox (cloud) return ``None`` at once.
         """
+        if self._mailbox() is None:
+            return None
         deadline = time.monotonic() + (
             self.response_timeout if timeout is None else timeout
         )
@@ -706,7 +760,7 @@ class Device:
         Returns ``{name: raw_value}`` — only names the machine actually
         republished appear in the result.
         """
-        request = getattr(self.transport, "request_property", None)
+        request = self._property_requester()
         props: dict[str, Any] = {}
         missing = list(names)
         if request is None:
@@ -833,7 +887,7 @@ class Device:
             )
         except (OSError, ValueError, RuntimeError) as err:
             logger.debug("recipe republish trigger failed: %s", err)
-        request = getattr(self.transport, "request_property", None)
+        request = self._property_requester()
         if request is not None:
             try:
                 request(name)
@@ -960,7 +1014,7 @@ class Device:
             report.breakdowns = ecam_statistics.resolve_cloud_breakdowns(props)
             return report
 
-        if getattr(self.transport, "pop_response", None) is None:
+        if self._mailbox() is None:
             raise NotImplementedError(
                 "native 0xA2 statistics require a transport with "
                 "pop_response (LAN); this transport does not provide one"
@@ -1048,11 +1102,14 @@ class Device:
                 status = getattr(self.get_monitor(), "status_name", None)
             except (OSError, ValueError, RuntimeError) as err:
                 logger.debug("monitor status probe failed: %s", err)
-        if status in ("standby", "sleeping", "off"):
+        if status in _STANDBY_STATUS_NAMES:
             self.wake()
         striker = (
             self._profile().session != ecam_profiles_mod.SESSION_DEVICE_CONNECTED_TS
         )
+        republished = [n for n in self.settings_datapoints if "sett_profile" in n]
+        if striker and self._mailbox() is None and republished:
+            return self._select_profile_via_republish(index, republished)
         attempts = 1 if striker else 3
         for attempt in range(attempts):
             self._send_gated(ecam_builder.build_profile_select(index, self._profile()))
@@ -1078,6 +1135,33 @@ class Device:
             return False
         self.current_profile = index
         return True
+
+    def _select_profile_via_republish(self, index: int, names: list[str]) -> bool:
+        """Striker over the cloud: no ``0xA9`` ack arrives, so confirm the
+        switch through the republished ``0x03EE`` register (0-based)."""
+        self._send_gated(ecam_builder.build_profile_select(index, self._profile()))
+        deadline = time.monotonic() + self.write_confirm_seconds
+        poll = max(self.response_poll, 1.0)
+        last_read: float | None = None
+        while True:
+            now = time.monotonic()
+            if last_read is None or now - last_read >= 3.0:
+                last_read = now
+                try:
+                    self.send_frame(
+                        ecam_builder.build_read_param(
+                            self.PARAM_CURRENT_PROFILE, self._profile()
+                        )
+                    )
+                except (ConnectionError, OSError, RuntimeError) as err:
+                    logger.debug("profile read-back request failed: %s", err)
+            raw = self._republished_param(self.PARAM_CURRENT_PROFILE, names)
+            if raw is not None and raw + 1 == index:
+                self.current_profile = index
+                return True
+            if now >= deadline:
+                return False
+            time.sleep(poll)
 
     @property
     def selected_profile(self) -> int | None:
@@ -1138,7 +1222,7 @@ class Device:
                     return self.current_profile
                 self.current_profile = raw + 1
                 return self.current_profile
-        if getattr(self.transport, "pop_response", None) is None:
+        if self._mailbox() is None:
             return None  # transports without a mailbox cannot answer 0x95
         self._profile_polled_at = now
         try:
@@ -1275,8 +1359,10 @@ class Device:
             ),
             None,
         )
-        request = getattr(self.transport, "request_property", None)
+        request = self._property_requester()
         deadline = time.monotonic() + self.write_confirm_seconds
+        # Over the cloud each poll is an HTTP GET; don't hammer it.
+        poll = self.response_poll if self._mailbox() else max(self.response_poll, 1.0)
         last_request: float | None = None
         acked = False
         seen: int | None = None
@@ -1303,8 +1389,12 @@ class Device:
                     return "confirmed"
                 continue
             now = time.monotonic()
-            if datapoint and request is not None:
-                if last_request is None or now - last_request >= 3.0:
+            if datapoint:
+                # Cloud: no request_property; the 0x95 read sent after the
+                # write makes the machine republish the backing property.
+                if request is not None and (
+                    last_request is None or now - last_request >= 3.0
+                ):
                     last_request = now
                     try:
                         request(datapoint)
@@ -1321,7 +1411,7 @@ class Device:
                     return "confirmed"
             if now >= deadline:
                 break
-            time.sleep(self.response_poll)
+            time.sleep(poll)
         logger.debug(
             "param write (%s=%s) unconfirmed: acked=%s last_seen=%s",
             key,
@@ -1353,7 +1443,7 @@ class Device:
             None,
         )
         if datapoint:
-            request = getattr(self.transport, "request_property", None)
+            request = self._property_requester()
             if request is not None:
                 try:
                     request(datapoint)
