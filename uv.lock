@@ -383,7 +383,7 @@ wheels = [
 ]
 
 [[package]]
-name = "cremalink"
+name = "cremalink-lodzen"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -422,9 +422,9 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = ">=3.13.0" },
-    { name = "cremalink", extras = ["docs"], marker = "extra == 'dev'" },
-    { name = "cremalink", extras = ["test"], marker = "extra == 'dev'" },
+    { name = "aiohttp", specifier = ">=3.9.0" },
+    { name = "cremalink-lodzen", extras = ["docs"], marker = "extra == 'dev'" },
+    { name = "cremalink-lodzen", extras = ["test"], marker = "extra == 'dev'" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=7.2.0" },
     { name = "notebook", marker = "extra == 'dev'", specifier = ">=7.5.5" },
     { name = "pycryptodome", specifier = "==3.23.0" },
@@ -432,7 +432,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.13.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = "==1.3.0" },
-    { name = "requests", specifier = ">=2.34.0" },
+    { name = "requests", specifier = ">=2.32.5" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = "==9.1.0" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = "==3.1.0" },
     { name = "sphinxcontrib-websupport", marker = "extra == 'docs'", specifier = "==2.0.0" },
