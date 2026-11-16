@@ -105,6 +105,8 @@ Changes since 2.0.0.dev5:
   names (`d26N_recipe_priority_N`), cold brew drinks and programmed custom
   slots join `beverage_catalog`, and `Device.custom_recipe_names()` returns
   the custom recipe names.
+- **Model names in device maps:** each bundled map carries a `model_name`
+  (e.g. "Eletta Explore") so front-ends can label the map choice.
 - **Standby quiet mode for the embedded server** (`local_server_app`,
   research.md R16): `LocalServerState.machine_asleep` (set via
   `EmbeddedLocalServer.set_machine_asleep`, logged as
