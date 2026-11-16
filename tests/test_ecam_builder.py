@@ -31,11 +31,7 @@ CAPTURED_FRAMES = json.loads(
 )
 
 #: Map entries that deliberately no longer rebuild the shared capture.
-#: ECAM452 ``espresso``: the captured frame carries coffee_ml 0x7E (126 ml,
-#: a lungo — miditkl/cremalink#220). The entry now sends the recipe-less
-#: short form, like ``double_espresso``, so the machine brews its own
-#: stored espresso volume for the profile.
-MAP_FRAME_OVERRIDES = {("ECAM452.json", "espresso"): "0d0883f0010106c8b2"}
+MAP_FRAME_OVERRIDES: dict[tuple[str, str], str] = {}
 
 
 def _rebuild_entry(entry: dict, captured: bytes) -> bytes:
@@ -59,6 +55,16 @@ def test_every_map_entry_rebuilds_captured_frame(map_name):
     device_map = json.loads((DEVICES / map_name).read_text())
     catalog = set(device_map.get("catalog_datapoints") or [])
     for name, entry in device_map["command_map"].items():
+        if entry.get("recipe") == "":
+            # Recipe-less short form (ECAM452): the machine brews its own
+            # stored recipe for the profile, so no captured recipe applies
+            # (the captured ECAM452 espresso carried 126 ml, miditkl#220).
+            frame = _rebuild_entry(entry, b"")
+            assert frame[2:6] == bytes(
+                [0x83, 0xF0, entry["beverage_id"], entry["action"]]
+            ), name
+            assert len(frame) == 9, name
+            continue
         if name not in CAPTURED_FRAMES:
             assert "command" in entry  # verbatim passthrough (e.g. refresh)
             continue
@@ -211,3 +217,26 @@ def test_builder_validation():
         build_statistics_page(0, 11, NON_STRIKER)
     with pytest.raises(TypeError):
         build_profile_select(1, None)
+
+
+def test_ecam452_drinks_brew_machine_recipes():
+    command_map = json.loads((DEVICES / "ECAM452.json").read_text())["command_map"]
+    drinks = {k: v for k, v in command_map.items() if "beverage_id" in v}
+    starts = {k: v for k, v in drinks.items() if v["action"] == 1}
+    # Every drink uses the machine's stored recipe for the active profile.
+    assert all(v["recipe"] == "" for v in starts.values())
+    ids = {v["beverage_id"] for v in starts.values()}
+    # Hot, iced and cold-brew drinks of the machine (beverage ids per app).
+    assert {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 22, 23, 24, 27} <= ids
+    assert set(range(50, 58)) | set(range(120, 125)) <= ids
+    # Mug variants exist but are created disabled.
+    mugs = {
+        k
+        for k, v in starts.items()
+        if 80 <= v["beverage_id"] < 120 or 140 <= v["beverage_id"] <= 142
+    }
+    assert len(mugs) == 18
+    assert all(starts[k].get("enabled_default") is False for k in mugs)
+    assert not any(
+        v.get("enabled_default") is False for k, v in starts.items() if k not in mugs
+    )
