@@ -261,25 +261,32 @@ def decode_text(payload: bytes) -> str | None:
     return name or None
 
 
-def decode_custom_names(payload: bytes) -> dict[int, str]:
-    """Slot → name from an ``aa f0`` custom-recipe names payload.
+def decode_custom_entries(payload: bytes) -> dict[int, tuple[str, int]]:
+    """Slot → (name, icon) from an ``aa f0`` custom-recipe names payload.
 
     Layout (ECAM452 cloud ``d053_custom_name_13`` / ``d054_custom_name_46``):
     ``<first slot> <last slot>`` then per slot 20 bytes UTF-16BE name and
-    one icon byte. Slots without a readable name are skipped.
+    one icon byte (the picture the app shows for the recipe). Slots without
+    a readable name are skipped.
     """
     if len(payload) < 2:
         return {}
     first, last = payload[0], payload[1]
-    out: dict[int, str] = {}
+    out: dict[int, tuple[str, int]] = {}
     for i, slot in enumerate(range(first, last + 1)):
-        chunk = payload[2 + i * 21 : 2 + i * 21 + 20]
-        if len(chunk) < 20:
+        entry = payload[2 + i * 21 : 2 + i * 21 + 21]
+        if len(entry) < 21:
             break
-        name = chunk.decode("utf-16-be", errors="ignore").split("\x00", 1)[0].strip()
+        name = entry[:20].decode("utf-16-be", errors="ignore").split("\x00", 1)[0]
+        name = name.strip()
         if name:
-            out[slot] = name
+            out[slot] = (name, entry[20])
     return out
+
+
+def decode_custom_names(payload: bytes) -> dict[int, str]:
+    """Slot → name from an ``aa f0`` custom-recipe names payload."""
+    return {slot: name for slot, (name, _) in decode_custom_entries(payload).items()}
 
 
 def _bundled_blobs(value: Any) -> dict[str, str] | None:

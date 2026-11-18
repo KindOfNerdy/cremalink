@@ -4,6 +4,10 @@
 
 Changes since 2.0.0.dev8:
 
+- **Custom recipe pictures:** `Device.custom_recipe_icons()` returns the picture
+  index the machine stores with each custom recipe name (the icon byte of the
+  `aa f0` entries, `decode_custom_entries`), by beverage id. The app maps the
+  index to one of its drink pictures; front-ends can do the same.
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.
