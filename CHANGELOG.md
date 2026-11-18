@@ -9,6 +9,11 @@ Changes since 2.0.0.dev6:
   (`None` where the transport has no per-datapoint times), so front-ends can
   show when the machine last reported its counters, not just when they
   were fetched.
+- **Favourite drinks per profile:** the `0xAC` blobs (`dNNN_favorite_priority_<p>`)
+  are parsed into `RecipeCatalogue.favorite_lists` and cached with the cloud
+  catalogue seed; `Device.favorite_beverages(profile)` returns the ids in the
+  machine's favourite order (`None` when unknown, `[]` when the profile has
+  none). ECAM452 lists the four datapoints. No extra machine request.
 - **Standby wake writes deliver in <1 s** (`local_server_app`,
   protocol.md §15 — live-verified 2026-11-18: `HassTurnOn` → first
   `command_served` in 0.78 s): standby quiet mode previously suppressed
