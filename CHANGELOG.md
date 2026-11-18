@@ -14,6 +14,10 @@ Changes since 2.0.0.dev6:
   catalogue seed; `Device.favorite_beverages(profile)` returns the ids in the
   machine's favourite order (`None` when unknown, `[]` when the profile has
   none). ECAM452 lists the four datapoints. No extra machine request.
+- **Custom recipe pictures:** `Device.custom_recipe_icons()` returns the picture
+  index the machine stores with each custom recipe name (the icon byte of the
+  `aa f0` entries, `decode_custom_entries`), by beverage id. The app maps the
+  index to one of its drink pictures; front-ends can do the same.
 - **Standby wake writes deliver in <1 s** (`local_server_app`,
   protocol.md §15 — live-verified 2026-11-18: `HassTurnOn` → first
   `command_served` in 0.78 s): standby quiet mode previously suppressed
