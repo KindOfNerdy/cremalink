@@ -227,6 +227,9 @@ class Device:
     #: Custom recipe names by beverage id (``0xE6``–``0xEB``) from a cloud
     #: snapshot's ``aa f0`` blobs.
     _custom_names: dict[int, str] = field(default_factory=dict, init=False, repr=False)
+    #: Picture index of each custom recipe by beverage id (the icon byte of
+    #: the same ``aa f0`` entries).
+    _custom_icons: dict[int, int] = field(default_factory=dict, init=False, repr=False)
     _fetch_lock: threading.RLock = field(
         default_factory=threading.RLock, init=False, repr=False
     )
@@ -2440,6 +2443,7 @@ class Device:
         index: dict[tuple[int, int], str] = {}
         recipes: dict[str, dict[str, Any]] = {}
         custom_names: dict[int, str] = {}
+        custom_icons: dict[int, int] = {}
         for name, blob in ecam_catalog.iter_blobs(dict(properties)):
             payload = blob.get("payload")
             if (
@@ -2447,8 +2451,11 @@ class Device:
                 and blob["family"] == ecam_catalog.FAMILY_CUSTOM_NAMES
                 and payload is not None
             ):
-                for slot, text in ecam_catalog.decode_custom_names(payload).items():
+                for slot, (text, icon) in ecam_catalog.decode_custom_entries(
+                    payload
+                ).items():
                     custom_names[_CUSTOM_SLOT_BASE + slot] = text
+                    custom_icons[_CUSTOM_SLOT_BASE + slot] = icon
                 continue
             if (
                 blob.get("crc_valid")
@@ -2461,6 +2468,7 @@ class Device:
         if custom_names:
             with self._fetch_lock:
                 self._custom_names.update(custom_names)
+                self._custom_icons.update(custom_icons)
         if not index:
             return
         declared = self._declared().beverages
@@ -2481,6 +2489,15 @@ class Device:
     def custom_recipe_names(self) -> dict[int, str]:
         """Custom recipe names by beverage id, as the last cloud seed saw them."""
         return dict(self._custom_names)
+
+    def custom_recipe_icons(self) -> dict[int, int]:
+        """Picture index of each custom recipe by beverage id (cloud seed).
+
+        The app maps the index to one of its drink pictures (0 cappuccino,
+        1 espresso, 2 latte macchiato …); the integration only passes the
+        number on.
+        """
+        return dict(self._custom_icons)
 
     def _priority_property_name(self, profile_slot: int) -> str | None:
         # Soul: ``dNNN_<p>_rec_priority``; striker: ``dNNN_recipe_priority_<p>``.

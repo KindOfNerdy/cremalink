@@ -181,6 +181,26 @@ def test_seed_keeps_recipe_values_out_of_the_cache():
     assert dev.recipe_params(1, profile_slot=1).values[1] == 60
 
 
+def test_custom_recipe_icons_come_from_the_snapshot():
+    snap = _snapshot()
+    dev = _device(dict(snap))
+    dev.seed_catalog_from_properties(snap)
+
+    assert dev.custom_recipe_icons() == {
+        230: 2,
+        231: 0x13,
+        232: 0x12,
+        233: 0x0B,
+        234: 0,
+    }
+
+
+def test_custom_entries_keep_the_icon_byte():
+    payload = _custom_names(1, [("Latte XL", 2), ("", 5)])[4:-2]
+    assert ecam_catalog.decode_custom_entries(payload) == {1: ("Latte XL", 2)}
+    assert ecam_catalog.decode_custom_names(payload) == {1: "Latte XL"}
+
+
 def test_custom_recipe_names_come_from_the_snapshot():
     snap = _snapshot()
     dev = _device(dict(snap))
