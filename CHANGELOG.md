@@ -4,6 +4,9 @@
 
 Changes since 2.0.0.dev8:
 
+- **Coffee temperature setting** (`temperature`, param `0x003D`, `d281`):
+  readable/writable like water hardness, levels low/medium/high,
+  gated by the map's `globalTemperature` flag.
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.
