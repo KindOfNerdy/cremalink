@@ -8,6 +8,9 @@ Changes since 2.0.0.dev8:
   `water_filter_quantity` were divided by 1000, but the raw value counts
   half-millilitres (`/ 2000`, like the LAN statistics). Eletta Explore:
   raw 1782545 is 891 l on the machine's own statistics screen.
+- **Coffee temperature setting** (`temperature`, param `0x003D`, `d281`):
+  readable/writable like water hardness, levels low/medium/high,
+  gated by the map's `globalTemperature` flag.
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.
