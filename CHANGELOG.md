@@ -4,6 +4,11 @@
 
 Changes since 2.0.0.dev8:
 
+- **Frames to save and delete recipes (not live-tested yet):** `build_save_recipe`,
+  `build_delete_recipe` and `build_recipe_name_write` build the app's frames: the `0x83` brew
+  frame with the operation SAVE (1) or DELETE (0) in the low bits of its last byte, and the
+  `0xAB` frame for the name and picture of a custom recipe. `build_brew`'s `accessory`
+  argument is that operation (a normal brew is 2, `OPERATION_PREPARE`).
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.

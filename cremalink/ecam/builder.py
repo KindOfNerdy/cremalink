@@ -48,6 +48,7 @@ REQ_PROFILE_NAMES = 0xA4
 REQ_PROFILE_NAMES_WRITE = 0xA5
 REQ_RECIPE_VALUES = 0xA6
 REQ_PRIORITY_LIST = 0xA8
+REQ_RECIPE_NAMES_WRITE = 0xAB
 REQ_PROFILE_SELECT = 0xA9
 REQ_RECIPE_NAMES = 0xAA
 REQ_FACTORY_DESCRIPTOR = 0xB0
@@ -70,6 +71,7 @@ REQUEST_NAMES = {
     REQ_PROFILE_NAMES_WRITE: "profile_names_write",
     REQ_RECIPE_VALUES: "recipe_values",
     REQ_PRIORITY_LIST: "priority_list",
+    REQ_RECIPE_NAMES_WRITE: "recipe_names_write",
     REQ_PROFILE_SELECT: "profile_select",
     REQ_RECIPE_NAMES: "recipe_names",
     REQ_FACTORY_DESCRIPTOR: "factory_descriptor",
@@ -275,6 +277,83 @@ def build_brew_params(
         profile,
         profile_slot=profile_slot,
         accessory=accessory,
+    )
+
+
+#: The low two bits of a ``0x83`` frame's last byte (``(profile<<2)|operation``) say what the
+#: machine does with the recipe: delete it, save it, prepare it, or prepare and save it
+#: (the app's ``DELETE_BEVERAGE``/``SAVE_BEVERAGE``/``PREPARE_BEVERAGE``/
+#: ``PREPARE_AND_SAVE_BEVERAGE``). A normal brew is 2; ``build_brew``'s ``accessory``
+#: argument is this field.
+OPERATION_DELETE = 0
+OPERATION_SAVE = 1
+OPERATION_PREPARE = 2
+OPERATION_PREPARE_AND_SAVE = 3
+
+#: Custom recipe names are at most 10 characters (20 bytes UTF-16BE).
+RECIPE_NAME_CHARS = 10
+
+
+def build_save_recipe(
+    beverage_id: int,
+    params: Mapping[int, int],
+    profile: MachineProfile,
+    *,
+    profile_slot: int,
+) -> bytes:
+    """``0x83`` frame that SAVES a recipe (app ``SAVE_BEVERAGE``) in a profile slot.
+
+    Nothing is brewed (action 0, "don't care"). For a custom recipe (ids 230-235)
+    this creates or changes it, for a standard drink it changes the profile's stored
+    recipe. The name of a custom recipe is written separately
+    (:func:`build_recipe_name_write`).
+    """
+    if not 1 <= profile_slot <= 0x3F:
+        raise ValueError(f"profile_slot out of range: {profile_slot!r}")
+    return build_brew_params(
+        beverage_id,
+        0,
+        params,
+        profile,
+        profile_slot=profile_slot,
+        accessory=OPERATION_SAVE,
+    )
+
+
+def build_delete_recipe(
+    beverage_id: int, profile: MachineProfile, *, profile_slot: int
+) -> bytes:
+    """``0x83`` frame that DELETES a recipe (app ``DELETE_BEVERAGE``) of a profile slot."""
+    if not 1 <= profile_slot <= 0x3F:
+        raise ValueError(f"profile_slot out of range: {profile_slot!r}")
+    return build_brew_params(
+        beverage_id,
+        0,
+        {},
+        profile,
+        profile_slot=profile_slot,
+        accessory=OPERATION_DELETE,
+    )
+
+
+def build_recipe_name_write(
+    slot: int, name: str, icon: int, profile: MachineProfile
+) -> bytes:
+    """``0D 1C AB F0 <slot> <slot> <20 B name> <icon>`` - name and picture of a custom recipe.
+
+    ``slot`` is 1-6 (beverage id 229 + slot). The name is UTF-16BE, 10 characters at
+    most, padded with zeros; ``icon`` is the picture number of the app's drink list.
+    """
+    _require_profile(profile)
+    if not 1 <= slot <= 6:
+        raise ValueError(f"custom recipe slot must be 1-6, got {slot!r}")
+    if not 0 <= icon <= 0xFF:
+        raise ValueError(f"icon out of range: {icon!r}")
+    if not name or len(name) > RECIPE_NAME_CHARS:
+        raise ValueError(f"name must have 1-{RECIPE_NAME_CHARS} characters: {name!r}")
+    encoded = name.encode("utf-16-be").ljust(2 * RECIPE_NAME_CHARS, b"\x00")
+    return _frame(
+        REQ_RECIPE_NAMES_WRITE, 0xF0, bytes([slot, slot]) + encoded + bytes([icon])
     )
 
 
