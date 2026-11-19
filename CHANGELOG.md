@@ -4,6 +4,10 @@
 
 Changes since 2.0.0.dev8:
 
+- **Create, change and delete custom recipes:** `Device.save_custom_recipe(slot, name, icon, params, brew=...)`
+  and `Device.delete_custom_recipe(slot)` (slots 1-6) write the recipe and its name and picture and
+  confirm both by reading them back; `read_custom_recipe_name(slot)` reads one slot. A deleted slot has
+  an empty name. Live-tested on an Eletta Explore.
 - **Cloud water counters in litres:** `water_total_quantity` and
   `water_filter_quantity` were divided by 1000, but the raw value counts
   half-millilitres (`/ 2000`, like the LAN statistics). Eletta Explore:
@@ -35,7 +39,7 @@ Changes since 2.0.0.dev8:
   dispensing, hot water, steam, finished). Coffee keeps the status `ready` while it runs;
   the action byte tells the step. Same table as the app, checked against a month of
   monitor frames of an Eletta Explore.
-- **Frames to save and delete recipes (not live-tested yet):** `build_save_recipe`,
+- **Frames to save and delete recipes (live-tested):** `build_save_recipe`,
   `build_delete_recipe` and `build_recipe_name_write` build the app's frames: the `0x83` brew
   frame with the operation SAVE (1) or DELETE (0) in the low bits of its last byte, and the
   `0xAB` frame for the name and picture of a custom recipe. `build_brew`'s `accessory`

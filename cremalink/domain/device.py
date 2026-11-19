@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import threading
+import base64
 import time
 from base64 import b64decode, b64encode
 from datetime import datetime
@@ -2631,6 +2632,174 @@ class Device:
             if time.monotonic() >= deadline:
                 return False
             time.sleep(poll)
+
+    # ---- custom recipes: create, change, delete ---------------------------------
+
+    def _custom_names_property(self, slot: int) -> str | None:
+        """Datapoint with the names of custom recipe ``slot`` (1-6): ``..._custom_name_13`` / ``_46``."""
+        for name in self.catalog_datapoints:
+            tail = name.rsplit("custom_name_", 1)[-1] if "custom_name_" in name else ""
+            if (
+                len(tail) == 2
+                and tail.isdigit()
+                and int(tail[0]) <= slot <= int(tail[1])
+            ):
+                return name
+        return None
+
+    def _republished(self, name: str, trigger: bytes, timeout: float) -> bytes | None:
+        """Send a read request and return the property's blob once it was republished."""
+        entry = self._property_entry(name)
+        before = entry.get("data_updated_at") if entry else None
+        self._send_gated(trigger)
+        deadline = time.monotonic() + timeout
+        poll = max(self.response_poll, 1.0)
+        while time.monotonic() < deadline:
+            time.sleep(poll)
+            entry = self._property_entry(name)
+            if entry and entry.get("data_updated_at") != before:
+                return self._as_blob_bytes(self._entry_value(entry))
+        return None
+
+    def read_custom_recipe_name(self, slot: int) -> tuple[str, int] | None:
+        """``(name, icon)`` of custom recipe ``slot`` as the machine reports it now, or ``None``.
+
+        An empty slot has an empty name.
+        """
+        name = self._custom_names_property(slot)
+        if name is None:
+            return None
+        blob = self._republished(
+            name,
+            ecam_builder.build_recipe_names(
+                int(name[-2]), int(name[-1]) - int(name[-2]) + 1, self._profile()
+            ),
+            self.write_confirm_seconds,
+        )
+        if blob is None:
+            return None
+        for item, decoded in ecam_catalog.iter_blobs(
+            {name: base64.b64encode(blob).decode()}
+        ):
+            payload = decoded.get("payload")
+            if payload is None or not decoded.get("crc_valid"):
+                continue
+            return ecam_catalog.decode_custom_entries(payload, keep_empty=True).get(
+                slot
+            )
+        return None
+
+    def save_custom_recipe(
+        self,
+        slot: int,
+        name: str,
+        icon: int,
+        params: Mapping[int, int],
+        *,
+        brew: bool = False,
+        profile_slot: int | None = None,
+    ) -> bool:
+        """Create or change custom recipe ``slot`` (1-6; beverage id 229 + slot).
+
+        Writes the recipe values (``0x83`` with the SAVE operation; with
+        ``brew=True`` PREPARE_AND_SAVE, which also pours it) and then name and
+        picture (``0xAB``). Confirmed by reading both back: ``True`` once the
+        machine reports the new values and name, ``False`` otherwise. ``params`` is
+        ``{param id: value}`` (water in ml: ``{15: 50}`` ...). Raises ``ValueError``
+        for an invalid slot, name or picture.
+        """
+        if not 1 <= slot <= 6:
+            raise ValueError(f"custom recipe slot must be 1-6, got {slot!r}")
+        beverage_id = _CUSTOM_SLOT_BASE + slot
+        profile_slot = profile_slot or self.current_profile or 1
+        profile = self._profile()
+        name_frame = ecam_builder.build_recipe_name_write(
+            slot, name, icon, profile
+        )  # validates
+        if brew:
+            frame = ecam_builder.build_brew_params(
+                beverage_id,
+                ecam_builder.BrewAction.START,
+                params,
+                profile,
+                profile_slot=profile_slot,
+                accessory=ecam_builder.OPERATION_PREPARE_AND_SAVE,
+            )
+        else:
+            frame = ecam_builder.build_save_recipe(
+                beverage_id, params, profile, profile_slot=profile_slot
+            )
+        self._send_gated(frame)
+        time.sleep(self.response_poll)
+        self._send_gated(name_frame)
+        wanted = {
+            tag: value
+            for tag, value in params.items()
+            if ecam_builder.brew_param_included(tag)
+        }
+        confirmed = self._confirm_custom_recipe(
+            slot, beverage_id, profile_slot, wanted, (name, icon)
+        )
+        if confirmed:
+            self._custom_names[beverage_id] = name
+            self._custom_icons[beverage_id] = icon
+        return confirmed
+
+    def _confirm_custom_recipe(
+        self, slot, beverage_id, profile_slot, wanted, expected_name
+    ) -> bool:
+        """Read recipe values (and name) back; ``True`` when they match what was written."""
+        deadline = time.monotonic() + self.write_confirm_seconds
+        values_ok = expected_name is None and not wanted
+        name_ok = expected_name is None
+        while time.monotonic() < deadline and not (values_ok and name_ok):
+            if not values_ok:
+                values_ok = self._recipe_matches(
+                    slot, beverage_id, profile_slot, wanted
+                )
+            if not name_ok:
+                name_ok = self.read_custom_recipe_name(slot) == expected_name
+        return values_ok and name_ok
+
+    def _recipe_matches(
+        self, slot: int, beverage_id: int, profile_slot: int, wanted: Mapping[int, int]
+    ) -> bool:
+        prop = self._recipe_property_name(profile_slot, beverage_id)
+        if prop is None:
+            return False
+        blob = self._republished(
+            prop,
+            ecam_builder.build_recipe_values(
+                profile_slot, beverage_id, self._profile()
+            ),
+            self.write_confirm_seconds,
+        )
+        if blob is None or len(blob) < 8:
+            return False
+        stored = ecam_catalog.parse_tlv(blob[6:-2]) or {}
+        return all(stored.get(tag) == value for tag, value in wanted.items())
+
+    def delete_custom_recipe(
+        self, slot: int, *, profile_slot: int | None = None
+    ) -> bool:
+        """Delete custom recipe ``slot`` (1-6); ``True`` once its name is empty again."""
+        if not 1 <= slot <= 6:
+            raise ValueError(f"custom recipe slot must be 1-6, got {slot!r}")
+        beverage_id = _CUSTOM_SLOT_BASE + slot
+        frame = ecam_builder.build_delete_recipe(
+            beverage_id,
+            self._profile(),
+            profile_slot=profile_slot or self.current_profile or 1,
+        )
+        self._send_gated(frame)
+        deadline = time.monotonic() + self.write_confirm_seconds
+        while time.monotonic() < deadline:
+            entry = self.read_custom_recipe_name(slot)
+            if entry is not None and not entry[0]:
+                self._custom_names.pop(beverage_id, None)
+                self._custom_icons.pop(beverage_id, None)
+                return True
+        return False
 
     def recipe_priority_loaded(self, profile_slot: int | None = None) -> bool:
         """Whether the profile's drink-menu order has been read already."""

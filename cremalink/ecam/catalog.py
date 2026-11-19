@@ -266,13 +266,16 @@ def decode_text(payload: bytes) -> str | None:
     return name or None
 
 
-def decode_custom_entries(payload: bytes) -> dict[int, tuple[str, int]]:
+def decode_custom_entries(
+    payload: bytes, *, keep_empty: bool = False
+) -> dict[int, tuple[str, int]]:
     """Slot → (name, icon) from an ``aa f0`` custom-recipe names payload.
 
     Layout (ECAM452 cloud ``d053_custom_name_13`` / ``d054_custom_name_46``):
     ``<first slot> <last slot>`` then per slot 20 bytes UTF-16BE name and
     one icon byte (the picture the app shows for the recipe). Slots without
-    a readable name are skipped.
+    a readable name are skipped (``keep_empty`` keeps them with an empty name; a deleted
+    slot reads like that).
     """
     if len(payload) < 2:
         return {}
@@ -284,7 +287,7 @@ def decode_custom_entries(payload: bytes) -> dict[int, tuple[str, int]]:
             break
         name = entry[:20].decode("utf-16-be", errors="ignore").split("\x00", 1)[0]
         name = name.strip()
-        if name:
+        if name or keep_empty:
             out[slot] = (name, entry[20])
     return out
 
