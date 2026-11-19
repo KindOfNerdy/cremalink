@@ -11,9 +11,12 @@ Changes since 2.0.0.dev8:
 - **Coffee temperature setting** (`temperature`, param `0x003D`, `d281`):
   readable/writable like water hardness, levels low/medium/high,
   gated by the map's `globalTemperature` flag.
-- **Milk counters (Eletta):** `total_milk_drinks` (hot milk: `d702` milk
-  drinks + milk only) and `total_iced_milk_drinks` (`d733`), matching the
-  machine's "total with hot / cold milk" statistics lines.
+- **Eletta statistics counters match the machine's screen:** `total_milk_drinks`
+  (hot milk: `d702` milk drinks + milk only) and the new
+  `total_iced_milk_drinks` (`d733`) match its "total with hot / cold milk"
+  lines; `total_beverages` also counts the iced coffees (`d701` + `d733`,
+  new `+` candidate syntax that adds datapoints); `total_other_beverages`
+  is tea, hot water and pot only (the `d702` JSON also holds the milk drinks).
 - **Favourite drinks per profile:** the `0xAC` blobs (`dNNN_favorite_priority_<p>`)
   are parsed into `RecipeCatalogue.favorite_lists` and cached with the cloud
   catalogue seed; `Device.favorite_beverages(profile)` returns the ids in the
