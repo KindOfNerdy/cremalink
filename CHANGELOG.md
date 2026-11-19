@@ -30,6 +30,11 @@ Changes since 2.0.0.dev8:
   index the machine stores with each custom recipe name (the icon byte of the
   `aa f0` entries, `decode_custom_entries`), by beverage id. The app maps the
   index to one of its drink pictures; front-ends can do the same.
+- **Drink phase from the monitor:** `drink_phase(status, action)` and `MonitorView.drink_phase`
+  say what the machine does while a drink is made (grinding, heating water, pre-infusion,
+  dispensing, hot water, steam, finished). Coffee keeps the status `ready` while it runs;
+  the action byte tells the step. Same table as the app, checked against a month of
+  monitor frames of an Eletta Explore.
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.

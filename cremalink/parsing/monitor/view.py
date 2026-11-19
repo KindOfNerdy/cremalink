@@ -9,6 +9,7 @@ from typing import Any
 
 from cremalink.core.binary import get_bit
 from cremalink.ecam.monitor_bits import ALARM_BITS, SWITCH_BITS, decode_bits
+from cremalink.ecam.phase import drink_phase
 from cremalink.parsing.monitor.frame import MonitorFrame
 from cremalink.parsing.monitor.model import MonitorSnapshot
 from cremalink.parsing.monitor.profile import MonitorProfile, PredicateDefinition
@@ -97,6 +98,11 @@ class MonitorView:
     def accessory_code(self) -> int | None:
         """The raw integer code for the currently detected accessory."""
         return self._frame.accessory if self._frame else None
+
+    @property
+    def drink_phase(self) -> str | None:
+        """What the machine does while a drink is made (grinding, dispensing ...), else None."""
+        return drink_phase(self.status_code, self.action_code)
 
     # --- documented switch / alarm bits ---
     def switch_states(self) -> dict[str, bool | None]:
