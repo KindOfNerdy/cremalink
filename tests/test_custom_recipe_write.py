@@ -157,3 +157,14 @@ def test_invalid_name_is_refused_before_sending():
     with pytest.raises(ValueError):
         dev.save_custom_recipe(6, "", 12, {15: 50})
     assert machine.sent == []
+
+
+def test_a_place_emptied_elsewhere_disappears_on_the_next_seed():
+    dev, machine = _device()
+    dev.save_custom_recipe(6, "TestWasser", 12, HOT_WATER, profile_slot=1)
+    assert dev.custom_recipe_names()[235] == "TestWasser"
+    machine.names[6] = ("", 0)  # deleted in the app
+    machine._publish_names()
+    dev.seed_catalog_from_properties(dict(machine.properties))
+    assert 235 not in dev.custom_recipe_names()
+    assert 235 not in dev.custom_recipe_icons()

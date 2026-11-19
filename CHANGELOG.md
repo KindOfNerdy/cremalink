@@ -4,6 +4,8 @@
 
 Changes since 2.0.0.dev8:
 
+- **Deleted custom recipes disappear:** a custom place whose name is empty again (deleted in the app or on
+  the machine) is dropped from `custom_recipe_names()` on the next catalogue seed instead of keeping the old name.
 - **Custom recipes from ingredients:** `compose_custom_recipe(Ingredients(...))` builds the parameters of a custom
   recipe like the Coffee Link app does (coffee, milk, water, strength, froth, milk first; the accessory follows from
   the ingredients) and checks the limits of a custom place; `describe_custom_recipe` is the reverse.

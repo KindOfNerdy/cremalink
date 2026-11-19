@@ -2506,6 +2506,7 @@ class Device:
         recipes: dict[str, dict[str, Any]] = {}
         custom_names: dict[int, str] = {}
         custom_icons: dict[int, int] = {}
+        emptied: set[int] = set()  # deleted places (in the app, on the machine or here)
         for name, blob in ecam_catalog.iter_blobs(dict(properties)):
             payload = blob.get("payload")
             if (
@@ -2514,8 +2515,11 @@ class Device:
                 and payload is not None
             ):
                 for slot, (text, icon) in ecam_catalog.decode_custom_entries(
-                    payload
+                    payload, keep_empty=True
                 ).items():
+                    if not text:
+                        emptied.add(_CUSTOM_SLOT_BASE + slot)
+                        continue
                     custom_names[_CUSTOM_SLOT_BASE + slot] = text
                     custom_icons[_CUSTOM_SLOT_BASE + slot] = icon
                 continue
@@ -2527,10 +2531,13 @@ class Device:
             ):
                 index.setdefault((payload[0], payload[1]), name)
                 recipes[name] = {"value": properties[name]}
-        if custom_names:
+        if custom_names or emptied:
             with self._fetch_lock:
                 self._custom_names.update(custom_names)
                 self._custom_icons.update(custom_icons)
+                for bev_id in emptied:
+                    self._custom_names.pop(bev_id, None)
+                    self._custom_icons.pop(bev_id, None)
         if not index:
             return
         declared = self._declared().beverages
