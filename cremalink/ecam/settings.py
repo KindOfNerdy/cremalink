@@ -50,6 +50,16 @@ SETTING_OPTION_MAPS: dict[str, WritableSetting] = {
         capability="water_hardness_settings",
         datapoint_hint="water",
     ),
+    # Param 0x003D (``d281``), gated by the map's ``globalTemperature`` flag.
+    # The app calls the levels Low/Medium/High/Max (0-3); the Eletta
+    # Explore's profile has 1 = Medium.
+    "temperature": WritableSetting(
+        key="temperature",
+        param_id=0x003D,
+        options={0: "low", 1: "medium", 2: "high", 3: "max"},
+        capability="globalTemperature",
+        datapoint_hint="_temp",
+    ),
 }
 
 

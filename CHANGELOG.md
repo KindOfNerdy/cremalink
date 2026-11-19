@@ -18,6 +18,9 @@ Changes since 2.0.0.dev6:
   index the machine stores with each custom recipe name (the icon byte of the
   `aa f0` entries, `decode_custom_entries`), by beverage id. The app maps the
   index to one of its drink pictures; front-ends can do the same.
+- **Coffee temperature setting** (`temperature`, param `0x003D`, `d281`):
+  readable/writable like water hardness, levels low/medium/high/max,
+  gated by the map's `globalTemperature` flag.
 - **Standby wake writes deliver in <1 s** (`local_server_app`,
   protocol.md §15 — live-verified 2026-11-18: `HassTurnOn` → first
   `command_served` in 0.78 s): standby quiet mode previously suppressed
