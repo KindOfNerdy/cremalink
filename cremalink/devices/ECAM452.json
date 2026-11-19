@@ -40,7 +40,15 @@
       "beverage_id": 6,
       "name": "Americano",
       "profile_slot": 1,
-      "recipe": "0100280f006e1b0102030400"
+      "recipe": ""
+    },
+    "brew_over_ice": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 27,
+      "name": "Brew over Ice",
+      "profile_slot": 1,
+      "recipe": ""
     },
     "caffe_latte": {
       "accessory": 2,
@@ -48,7 +56,7 @@
       "beverage_id": 9,
       "name": "Caff\u00e9 Latte",
       "profile_slot": 1,
-      "recipe": "1c0201003c1b01020309017c0400"
+      "recipe": ""
     },
     "cappuccino": {
       "accessory": 2,
@@ -56,7 +64,7 @@
       "beverage_id": 7,
       "name": "Cappuccino",
       "profile_slot": 1,
-      "recipe": "1c0201004e1b0202040900cc0400"
+      "recipe": ""
     },
     "cappuccino_mix": {
       "accessory": 2,
@@ -64,7 +72,7 @@
       "beverage_id": 15,
       "name": "Cappuccino Mix",
       "profile_slot": 2,
-      "recipe": "0c011c020100321b0402030900f70400"
+      "recipe": ""
     },
     "cappuccino_plus": {
       "accessory": 2,
@@ -72,7 +80,7 @@
       "beverage_id": 13,
       "name": "Cappuccino+",
       "profile_slot": 1,
-      "recipe": "1c020100781b020900b40400"
+      "recipe": ""
     },
     "coffee": {
       "accessory": 2,
@@ -80,7 +88,82 @@
       "beverage_id": 2,
       "name": "Coffee",
       "profile_slot": 1,
-      "recipe": "1b040100f002030400"
+      "recipe": ""
+    },
+    "coffee_pot": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 23,
+      "name": "Coffee Pot",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "cold_brew": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 120,
+      "name": "Cold Brew",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "cold_brew_cappuccino": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 124,
+      "name": "Cold Brew Cappuccino",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "cold_brew_cappuccino_mug": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 142,
+      "name": "Cold Brew Cappuccino Mug",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "cold_brew_latte": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 123,
+      "name": "Cold Brew Latte",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "cold_brew_latte_mug": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 141,
+      "name": "Cold Brew Latte Mug",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "cold_brew_mug": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 140,
+      "name": "Cold Brew Mug",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "cold_brew_pot": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 122,
+      "name": "Cold Brew Pot",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "cold_brew_to_mix": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 121,
+      "name": "Cold Brew to Mix",
+      "profile_slot": 1,
+      "recipe": ""
     },
     "cortado": {
       "accessory": 2,
@@ -88,15 +171,15 @@
       "beverage_id": 24,
       "name": "Cortado",
       "profile_slot": 1,
-      "recipe": "0c011c020100301b0202030900300400"
+      "recipe": ""
     },
     "doppio_plus": {
       "accessory": 2,
-      "action": 2,
+      "action": 1,
       "beverage_id": 5,
       "name": "Doppio Plus",
       "profile_slot": 1,
-      "recipe": "0100601b000400"
+      "recipe": ""
     },
     "double_espresso": {
       "accessory": 2,
@@ -120,7 +203,7 @@
       "beverage_id": 11,
       "name": "Espresso Macchiato",
       "profile_slot": 1,
-      "recipe": "1c0201001e1b0102030900280400"
+      "recipe": ""
     },
     "espresso_soul": {
       "accessory": 2,
@@ -128,7 +211,7 @@
       "beverage_id": 200,
       "name": "Espresso Soul",
       "profile_slot": 1,
-      "recipe": "01003c1b04"
+      "recipe": ""
     },
     "flat_white": {
       "accessory": 2,
@@ -136,7 +219,7 @@
       "beverage_id": 10,
       "name": "Flat White",
       "profile_slot": 1,
-      "recipe": "0c011c0201003c1b0102030900dc0400"
+      "recipe": ""
     },
     "hot_milk": {
       "accessory": 2,
@@ -144,7 +227,7 @@
       "beverage_id": 12,
       "name": "Hot Milk",
       "profile_slot": 1,
-      "recipe": "1c020901201b00"
+      "recipe": ""
     },
     "hot_water": {
       "accessory": 2,
@@ -152,7 +235,63 @@
       "beverage_id": 16,
       "name": "Hot Water",
       "profile_slot": 1,
-      "recipe": "0f00fa1b01"
+      "recipe": ""
+    },
+    "iced_americano": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 50,
+      "name": "Iced Americano",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_caffe_latte": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 56,
+      "name": "Iced Caff\u00e9 Latte",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_cappuccino": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 51,
+      "name": "Iced Cappuccino",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_cappuccino_mix": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 53,
+      "name": "Iced Cappuccino Mix",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_cold_milk": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 55,
+      "name": "Cold Milk",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_flat_white": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 54,
+      "name": "Iced Flat White",
+      "profile_slot": 1,
+      "recipe": ""
+    },
+    "iced_latte_macchiato": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 52,
+      "name": "Iced Latte Macchiato",
+      "profile_slot": 1,
+      "recipe": ""
     },
     "latte_macchiato": {
       "accessory": 2,
@@ -160,7 +299,7 @@
       "beverage_id": 8,
       "name": "Latte Macchiato",
       "profile_slot": 1,
-      "recipe": "1c020100481b02020209015c0400"
+      "recipe": ""
     },
     "long_coffee": {
       "accessory": 2,
@@ -168,7 +307,150 @@
       "beverage_id": 3,
       "name": "Long Coffee",
       "profile_slot": 1,
-      "recipe": "0100a01b0102030400"
+      "recipe": ""
+    },
+    "mug_americano": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 80,
+      "name": "Mug Americano",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_caffe_latte": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 83,
+      "name": "Mug Caff\u00e9 Latte",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_cappuccino": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 81,
+      "name": "Mug Cappuccino",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_cappuccino_mix": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 84,
+      "name": "Mug Cappuccino Mix",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_flat_white": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 85,
+      "name": "Mug Flat White",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_hot_milk": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 86,
+      "name": "Mug Hot Milk",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_americano": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 101,
+      "name": "Mug Iced Americano",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_caffe_latte": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 104,
+      "name": "Mug Iced Caff\u00e9 Latte",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_cappuccino": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 102,
+      "name": "Mug Iced Cappuccino",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_cappuccino_mix": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 105,
+      "name": "Mug Iced Cappuccino Mix",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_cold_milk": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 107,
+      "name": "Mug Cold Milk",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_flat_white": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 106,
+      "name": "Mug Iced Flat White",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_iced_latte_macchiato": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 103,
+      "name": "Mug Iced Latte Macchiato",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_latte_macchiato": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 82,
+      "name": "Mug Latte Macchiato",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "mug_over_ice": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 100,
+      "name": "Mug over Ice",
+      "profile_slot": 1,
+      "recipe": "",
+      "enabled_default": false
+    },
+    "over_ice_espresso": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 57,
+      "name": "Espresso over Ice",
+      "profile_slot": 1,
+      "recipe": ""
     },
     "refresh": {
       "command": "0d07840f03025640",
@@ -184,6 +466,14 @@
       "beverage_id": 16,
       "name": "Stop",
       "profile_slot": 1
+    },
+    "tea": {
+      "accessory": 2,
+      "action": 1,
+      "beverage_id": 22,
+      "name": "Tea",
+      "profile_slot": 1,
+      "recipe": ""
     },
     "wakeup": {
       "name": "Turn On",
