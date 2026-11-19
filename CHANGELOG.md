@@ -4,6 +4,10 @@
 
 Changes since 2.0.0.dev6:
 
+- **Coffee temperature setting** (`temperature`, param `0x003D`, `d281`):
+  readable/writable like water hardness, levels low/medium/high/max,
+  gated by the map's `globalTemperature` flag.
+
 - **Standby wake writes deliver in <1 s** (`local_server_app`,
   protocol.md §15 — live-verified 2026-11-18: `HassTurnOn` → first
   `command_served` in 0.78 s): standby quiet mode previously suppressed
