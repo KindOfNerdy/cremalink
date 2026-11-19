@@ -4,6 +4,10 @@
 
 Changes since 2.0.0.dev8:
 
+- **Write a profile's favourite drinks:** `Device.set_favorite_beverages(ids, profile)` sends
+  the app's `0xAD` frame (complete list in favourite order, at most 12, custom
+  recipes 230–235) and confirms it through the republished
+  `dNNN_favorite_priority_<p>` datapoint; `build_set_favorites` builds the frame.
 - **Favourite drinks per profile:** the `0xAC` blobs (`dNNN_favorite_priority_<p>`)
   are parsed into `RecipeCatalogue.favorite_lists` and cached with the cloud
   catalogue seed; `Device.favorite_beverages(profile)` returns the ids in the
