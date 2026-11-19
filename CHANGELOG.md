@@ -4,6 +4,11 @@
 
 Changes since 2.0.0.dev8:
 
+- **Drink phase from the monitor:** `drink_phase(status, action)` and `MonitorView.drink_phase`
+  say what the machine does while a drink is made (grinding, heating water, pre-infusion,
+  dispensing, hot water, steam, finished). Coffee keeps the status `ready` while it runs;
+  the action byte tells the step. Same table as the app, checked against a month of
+  monitor frames of an Eletta Explore.
 - **ECAM452 recipe catalogue from the cloud** (merge of KindOfNerdy's
   #17 — details in its entry below): cloud-seeded recipe index, cold
   brew drinks, custom slots and `Device.custom_recipe_names()`.
