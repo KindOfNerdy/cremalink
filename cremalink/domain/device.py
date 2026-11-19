@@ -2640,6 +2640,42 @@ class Device:
                 return False
             time.sleep(poll)
 
+    # ---- standard drinks: keep changed values in the profile ------------------
+
+    def save_profile_recipe(
+        self,
+        beverage_id: int,
+        params: Mapping[int, int],
+        *,
+        profile_slot: int | None = None,
+    ) -> bool:
+        """Keep ``params`` as the profile's stored recipe of a standard drink.
+
+        Like the app's "save" on the brew screen (``SAVE_BEVERAGE``): cold and cold
+        to-go drinks are saved without their fixed amounts. Confirmed by reading the
+        recipe back. Custom recipes go through :meth:`save_custom_recipe`.
+        """
+        if beverage_id in ecam_catalog.CUSTOM_SLOT_IDS:
+            raise ValueError("custom recipes are saved with save_custom_recipe")
+        profile_slot = profile_slot or self.current_profile or 1
+        cold = ecam_builder.beverage_type(beverage_id) in ("cold", "to_go_cold")
+        frame = ecam_builder.build_save_recipe(
+            beverage_id, params, self._profile(), profile_slot=profile_slot, cold=cold
+        )
+        self._send_gated(frame)
+        wanted = {
+            tag: value
+            for tag, value in params.items()
+            if ecam_builder.brew_param_included(tag)
+            and not (cold and tag in ecam_builder.COLD_SAVE_DROP_TAGS)
+            and not (not cold and beverage_id == 200 and tag == 2)
+        }
+        deadline = time.monotonic() + self.write_confirm_seconds
+        while time.monotonic() < deadline:
+            if self._recipe_matches(0, beverage_id, profile_slot, wanted):
+                return True
+        return False
+
     # ---- custom recipes: create, change, delete ---------------------------------
 
     def _custom_names_property(self, slot: int) -> str | None:

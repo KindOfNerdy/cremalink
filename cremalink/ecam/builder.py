@@ -296,12 +296,34 @@ OPERATION_PREPARE_AND_SAVE = 3
 RECIPE_NAME_CHARS = 10
 
 
+#: Tags the app leaves out when saving a cold or cold to-go drink (``d.Q``/``B0``):
+#: their amounts of coffee, milk and hot water are fixed by the machine.
+COLD_SAVE_DROP_TAGS = frozenset({0x01, 0x09, 0x0F})
+
+
+def beverage_type(beverage_id: int, *, cold_brew: bool = True) -> str:
+    """``"hot"``, ``"cold"``, ``"to_go_hot"`` or ``"to_go_cold"``, like the app (``m6.e.a``).
+
+    ``cold_brew`` is the app's flag for machines with cold brew (Eletta Explore): then
+    cold brew (27) is cold and 140-142 are cold to-go drinks.
+    """
+    b = beverage_id
+    if 50 <= b < 58 or (cold_brew and b == 27) or 120 <= b < 125:
+        return "cold"
+    if 80 <= b < 87:
+        return "to_go_hot"
+    if 100 <= b < 108 or (cold_brew and 140 <= b < 143):
+        return "to_go_cold"
+    return "hot"
+
+
 def build_save_recipe(
     beverage_id: int,
     params: Mapping[int, int],
     profile: MachineProfile,
     *,
     profile_slot: int,
+    cold: bool = False,
 ) -> bytes:
     """``0x83`` frame that SAVES a recipe (app ``SAVE_BEVERAGE``) in a profile slot.
 
@@ -309,13 +331,35 @@ def build_save_recipe(
     this creates or changes it, for a standard drink it changes the profile's stored
     recipe. The name of a custom recipe is written separately
     (:func:`build_recipe_name_write`).
+
+    Mirrors the app's builders: the ``E0`` filter always; a hot drink (``d.O``)
+    without param 8 and, for bean drink 200, without strength (the app saves without
+    the bean flag); a ``cold`` or cold to-go drink (``d.Q``) without the amounts of
+    coffee, milk and hot water (``COLD_SAVE_DROP_TAGS``).
     """
     if not 1 <= profile_slot <= 0x3F:
         raise ValueError(f"profile_slot out of range: {profile_slot!r}")
-    return build_brew_params(
+    from cremalink.ecam.catalog import WIDE_TAGS
+
+    recipe = bytearray()
+    for tag, value in params.items():
+        if not (tag < 23 or tag in BREW_KEEP_EXTENDED):
+            continue
+        if cold and tag in COLD_SAVE_DROP_TAGS:
+            continue
+        if not cold and (tag in BREW_DROP_TAGS or (beverage_id == 200 and tag == 2)):
+            continue
+        if not 0 <= value <= 0xFFFF:
+            raise ValueError(f"param {tag} value out of range: {value!r}")
+        width = 2 if tag in WIDE_TAGS else 1
+        if value > 0xFF and width == 1:
+            raise ValueError(f"param {tag} value {value} needs u16 width")
+        recipe.append(tag)
+        recipe += value.to_bytes(width, "big")
+    return build_brew(
         beverage_id,
         0,
-        params,
+        bytes(recipe),
         profile,
         profile_slot=profile_slot,
         accessory=OPERATION_SAVE,

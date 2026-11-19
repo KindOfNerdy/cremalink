@@ -4,6 +4,9 @@
 
 Changes since 2.0.0.dev8:
 
+- **Keep changed values of a standard drink in the profile:** `Device.save_profile_recipe(beverage_id, params)`
+  saves like the app's brew-screen save (`SAVE_BEVERAGE`) and confirms by reading back; cold and cold to-go
+  drinks are saved without their fixed amounts, as the app does (`beverage_type()` sorts drinks like the app).
 - **Deleting a custom recipe takes it out of the favourites first,** like the app does (the active profile's list
   is written again without it).
 - **Deleted custom recipes disappear:** a custom place whose name is empty again (deleted in the app or on
