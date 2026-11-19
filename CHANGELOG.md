@@ -4,6 +4,9 @@
 
 Changes since 2.0.0.dev8:
 
+- **Custom recipes from ingredients:** `compose_custom_recipe(Ingredients(...))` builds the parameters of a custom
+  recipe like the Coffee Link app does (coffee, milk, water, strength, froth, milk first; the accessory follows from
+  the ingredients) and checks the limits of a custom place; `describe_custom_recipe` is the reverse.
 - **Create, change and delete custom recipes:** `Device.save_custom_recipe(slot, name, icon, params, brew=...)`
   and `Device.delete_custom_recipe(slot)` (slots 1-6) write the recipe and its name and picture and
   confirm both by reading them back; `read_custom_recipe_name(slot)` reads one slot. A deleted slot has
