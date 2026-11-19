@@ -4,6 +4,8 @@
 
 Changes since 2.0.0.dev8:
 
+- **Deleting a custom recipe takes it out of the favourites first,** like the app does (the active profile's list
+  is written again without it).
 - **Deleted custom recipes disappear:** a custom place whose name is empty again (deleted in the app or on
   the machine) is dropped from `custom_recipe_names()` on the next catalogue seed instead of keeping the old name.
 - **Custom recipes from ingredients:** `compose_custom_recipe(Ingredients(...))` builds the parameters of a custom

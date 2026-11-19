@@ -168,3 +168,23 @@ def test_a_place_emptied_elsewhere_disappears_on_the_next_seed():
     dev.seed_catalog_from_properties(dict(machine.properties))
     assert 235 not in dev.custom_recipe_names()
     assert 235 not in dev.custom_recipe_icons()
+
+
+def test_delete_takes_the_drink_out_of_the_favourites_first():
+    dev, machine = _device()
+    dev._favorite_cache[1] = [2, 235, 8]
+    written = []
+    dev.set_favorite_beverages = (
+        lambda ids, profile=None: written.append((ids, profile)) or True
+    )
+    assert dev.delete_custom_recipe(6, profile_slot=1) is True
+    assert written == [([2, 8], 1)]
+
+
+def test_delete_leaves_the_favourites_alone_when_the_drink_is_not_in_them():
+    dev, machine = _device()
+    dev._favorite_cache[1] = [2, 8]
+    written = []
+    dev.set_favorite_beverages = lambda ids, profile=None: written.append(ids) or True
+    dev.delete_custom_recipe(6, profile_slot=1)
+    assert written == []

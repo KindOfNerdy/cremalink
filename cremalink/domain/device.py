@@ -2789,10 +2789,20 @@ class Device:
     def delete_custom_recipe(
         self, slot: int, *, profile_slot: int | None = None
     ) -> bool:
-        """Delete custom recipe ``slot`` (1-6); ``True`` once its name is empty again."""
+        """Delete custom recipe ``slot`` (1-6); ``True`` once its name is empty again.
+
+        Like the app, the drink is first taken out of the active profile's favourites
+        (the whole list is written again without it), then the recipe is deleted.
+        """
         if not 1 <= slot <= 6:
             raise ValueError(f"custom recipe slot must be 1-6, got {slot!r}")
         beverage_id = _CUSTOM_SLOT_BASE + slot
+        favorites_profile = profile_slot or self.current_profile or 1
+        favorites = self.favorite_beverages(favorites_profile)
+        if favorites and beverage_id in favorites:
+            self.set_favorite_beverages(
+                [i for i in favorites if i != beverage_id], favorites_profile
+            )
         frame = ecam_builder.build_delete_recipe(
             beverage_id,
             self._profile(),
