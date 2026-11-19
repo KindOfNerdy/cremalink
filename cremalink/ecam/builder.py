@@ -48,6 +48,7 @@ REQ_PROFILE_NAMES = 0xA4
 REQ_PROFILE_NAMES_WRITE = 0xA5
 REQ_RECIPE_VALUES = 0xA6
 REQ_PRIORITY_LIST = 0xA8
+REQ_FAVORITES_WRITE = 0xAD
 REQ_PROFILE_SELECT = 0xA9
 REQ_RECIPE_NAMES = 0xAA
 REQ_FACTORY_DESCRIPTOR = 0xB0
@@ -70,6 +71,7 @@ REQUEST_NAMES = {
     REQ_PROFILE_NAMES_WRITE: "profile_names_write",
     REQ_RECIPE_VALUES: "recipe_values",
     REQ_PRIORITY_LIST: "priority_list",
+    REQ_FAVORITES_WRITE: "favorites_write",
     REQ_PROFILE_SELECT: "profile_select",
     REQ_RECIPE_NAMES: "recipe_names",
     REQ_FACTORY_DESCRIPTOR: "factory_descriptor",
@@ -425,6 +427,34 @@ def build_priority_list(profile_slot: int, profile: MachineProfile) -> bytes:
     if not 0 <= profile_slot <= 0xFF:
         raise ValueError(f"profile_slot out of range: {profile_slot!r}")
     return build_read(REQ_PRIORITY_LIST, bytes([profile_slot]), profile)
+
+
+#: The machine stores at most 12 favourite drinks per profile (the app's
+#: ``int[12]``).
+MAX_FAVORITES = 12
+
+
+def build_set_favorites(
+    profile_slot: int, beverage_ids: Iterable[int], profile: MachineProfile
+) -> bytes:
+    """``0D 12 AD F0 <prof> <12 ids>`` — write a profile's favourite drinks.
+
+    The app (``getPacketForSetFavoriteBeverage``) always sends the whole
+    list: favourite order, zero-padded to 12 entries. Adding a favourite puts
+    it first. Custom recipes use their ids 230–235.
+    """
+    _require_profile(profile)
+    if not 0 <= profile_slot <= 0xFF:
+        raise ValueError(f"profile_slot out of range: {profile_slot!r}")
+    ids = [int(i) for i in beverage_ids]
+    if len(ids) > MAX_FAVORITES:
+        raise ValueError(f"at most {MAX_FAVORITES} favourites, got {len(ids)}")
+    if any(not 1 <= i <= 0xFF for i in ids):
+        raise ValueError(f"beverage ids must be 1..255: {ids!r}")
+    if len(set(ids)) != len(ids):
+        raise ValueError(f"duplicate beverage ids: {ids!r}")
+    padded = bytes(ids) + bytes(MAX_FAVORITES - len(ids))
+    return _frame(REQ_FAVORITES_WRITE, 0xF0, bytes([profile_slot]) + padded)
 
 
 def build_bean_system(index: int, profile: MachineProfile) -> bytes:

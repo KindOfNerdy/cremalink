@@ -13,7 +13,7 @@ import threading
 import time
 from base64 import b64decode, b64encode
 from datetime import datetime
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal
 
@@ -2575,6 +2575,62 @@ class Device:
         """
         favorites = self._favorite_cache.get(profile_slot or self.current_profile or 1)
         return None if favorites is None else list(favorites)
+
+    def _favorite_property_name(self, profile_slot: int) -> str | None:
+        suffix = f"_favorite_priority_{profile_slot}"
+        return next((n for n in self.catalog_datapoints if n.endswith(suffix)), None)
+
+    @staticmethod
+    def _favorites_from_blob(blob: bytes | None) -> tuple[int, list[int]] | None:
+        """``(profile, favourite ids)`` of a ``d0 <len> ac f0 <prof> <ids>`` blob."""
+        if not blob:
+            return None
+        frame = ecam_builder.trim_frame(blob)
+        if len(frame) < 7 or frame[2] != 0xAC or not ecam_builder.verify_frame(frame):
+            return None
+        return frame[4], [b for b in frame[5:-2] if b]
+
+    def set_favorite_beverages(
+        self, beverage_ids: Iterable[int], profile_slot: int | None = None
+    ) -> bool:
+        """Write a profile's favourite drinks (session-gated ``0xAD``).
+
+        ``beverage_ids`` is the complete list in favourite order (at most 12;
+        custom recipes are 230–235) — the machine takes the whole list, like
+        the app. Confirmed through the republished
+        ``dNNN_favorite_priority_<p>`` datapoint: returns ``True`` once it
+        shows the new list (after a change of the value or its timestamp),
+        ``False`` if it does not within :attr:`write_confirm_seconds` or the
+        map has no such datapoint. Raises ``ValueError`` for an invalid list.
+        """
+        slot = profile_slot or self.current_profile or 1
+        wanted = [int(i) for i in beverage_ids]
+        frame = ecam_builder.build_set_favorites(slot, wanted, self._profile())
+        name = self._favorite_property_name(slot)
+
+        def _read() -> tuple[list[int] | None, Any]:
+            entry = self._property_entry(name) if name else None
+            if entry is None:
+                return None, None
+            parsed = self._favorites_from_blob(
+                self._as_blob_bytes(self._entry_value(entry))
+            )
+            return (parsed[1] if parsed else None), entry.get("data_updated_at")
+
+        before_ids, before_stamp = _read()
+        self._send_gated(frame)
+        if name is None:
+            return False
+        deadline = time.monotonic() + self.write_confirm_seconds
+        poll = max(self.response_poll, 1.0)
+        while True:
+            ids, stamp = _read()
+            if ids == wanted and (stamp != before_stamp or before_ids != wanted):
+                self._favorite_cache[slot] = list(wanted)
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(poll)
 
     def recipe_priority_loaded(self, profile_slot: int | None = None) -> bool:
         """Whether the profile's drink-menu order has been read already."""
