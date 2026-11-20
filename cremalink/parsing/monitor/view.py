@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from cremalink.core.binary import get_bit
-from cremalink.ecam.monitor_bits import ALARM_BITS, SWITCH_BITS, decode_bits
+from cremalink.ecam.monitor_bits import ALARM_BITS, SWITCH_BITS, BitDef, decode_bits
 from cremalink.ecam.phase import drink_phase
 from cremalink.parsing.monitor.frame import MonitorFrame
 from cremalink.parsing.monitor.model import MonitorSnapshot
@@ -32,6 +32,7 @@ class MonitorView:
         self,
         snapshot: MonitorSnapshot,
         profile: MonitorProfile | dict[str, Any] | None = None,
+        switch_bits: dict[int, BitDef] | None = None,
     ) -> None:
         """
         Initializes the MonitorView.
@@ -40,8 +41,11 @@ class MonitorView:
             snapshot: The `MonitorSnapshot` containing the data to be viewed.
             profile: A `MonitorProfile` or a dictionary to build one from. This
                      profile dictates how the raw data is interpreted.
+            switch_bits: The model's switch bits (``switch_bits()``); the
+                     documented table when left out.
         """
         self.snapshot = snapshot
+        self._switch_bits = switch_bits or SWITCH_BITS
         # Ensure profile is always a MonitorProfile instance.
         self.profile = (
             profile
@@ -109,7 +113,7 @@ class MonitorView:
         """Every documented switch bit by key (motor position, clean knob, …)."""
         if not self._frame:
             return {}
-        return decode_bits(self._frame.switches, SWITCH_BITS)
+        return decode_bits(self._frame.switches, self._switch_bits)
 
     def alarm_states(self) -> dict[str, bool | None]:
         """Every documented alarm bit by key."""

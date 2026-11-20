@@ -64,7 +64,7 @@ class _Eletta(CloudLikeTransport):
     def send_command(self, command, alternative_property=None):
         frame = base64.b64decode(command)
         result = super().send_command(command, alternative_property)
-        if len(frame) < 5:
+        if len(frame) < 5 or frame[0] != 0x0D:  # app id registration, not a machine frame
             return result
         frame = frame[: frame[1] + 1]  # the transport appends a counter and the app id
         op = frame[2]
@@ -88,7 +88,7 @@ def _device(*, applies=True):
     machine = _Eletta(applies=applies)
     dev = Device.from_map(machine, device_map_path=str(DEVICES / "ECAM452.json"))
     dev.write_confirm_seconds = 5.0
-    dev.custom_recipe_confirm_seconds = 5.0
+    dev.recipe_confirm_seconds = 5.0
     dev.app_id_confirm_seconds = 0.0
     dev.app_id_confirm_own_seconds = 0.0
     dev.app_id_confirm_poll = 0.0

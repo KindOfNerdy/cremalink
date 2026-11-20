@@ -13,6 +13,7 @@ the alarms word is 4 bytes assembled from non-contiguous payload bytes by
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import NamedTuple
 
 
@@ -73,6 +74,21 @@ ALARM_BITS: dict[int, BitDef] = {
     26: BitDef("clock_bt_comm_problem", "Clock Board Comm Problem", False),
     27: BitDef("spi_comm_problem", "SPI Comm Problem", False),
 }
+
+
+def switch_bits(names: Mapping[str | int, str] | None = None) -> dict[int, BitDef]:
+    """The documented switch bits with a model's own names applied.
+
+    Some bits mean something else on some models: on the Eletta Explore
+    (ECAM452) bit 9 is the hot milk carafe turned to clean, not a chocolate
+    tank, and bits 11 and 15 are the cold milk carafe. ``names`` maps such
+    bits to their key (``{"9": "milk_carafe_hot_clean"}``); the label is
+    made from the key.
+    """
+    table = dict(SWITCH_BITS)
+    for bit, key in (names or {}).items():
+        table[int(bit)] = BitDef(key, key.replace("_", " ").capitalize())
+    return dict(sorted(table.items()))
 
 
 def decode_bits(word: bytes, table: dict[int, BitDef]) -> dict[str, bool | None]:

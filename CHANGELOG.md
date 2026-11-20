@@ -4,7 +4,8 @@
 
 Changes since 2.0.0.dev8:
 
-- **Custom recipes get 90 s to confirm** (`custom_recipe_confirm_seconds`), like the app; other writes keep 45 s.
+- **Saved recipes get 90 s to confirm** (`recipe_confirm_seconds`, custom recipes and `save_profile_recipe`), like the app; other writes keep 45 s.
+- **Model-specific switch bits:** a device map can name switch bits that mean something else on that model (`monitor_bits.switch_names`); `Device.switch_bits` and `MonitorView.switch_states()` use them. Eletta Explore (ECAM452): bit 8 hot milk carafe, 9 hot carafe on clean, 11 cold milk carafe, 15 cold carafe on clean (checked live).
 - **Keep changed values of a standard drink in the profile:** `Device.save_profile_recipe(beverage_id, params)`
   saves like the app's brew-screen save (`SAVE_BEVERAGE`) and confirms by reading back; cold and cold to-go
   drinks are saved without their fixed amounts, as the app does (`beverage_type()` sorts drinks like the app).

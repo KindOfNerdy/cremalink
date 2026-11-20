@@ -491,7 +491,6 @@
   },
   "monitor_bits": {
     "exclude": [
-      "choco_tank_present",
       "preground_door_opened",
       "beans_empty_hopper_2",
       "bean_hopper_absent",
@@ -508,7 +507,13 @@
       "heater_probe_failure",
       "infuser_motor_not_working",
       "steamer_probe_failure"
-    ]
+    ],
+    "switch_names": {
+      "8": "milk_carafe_hot",
+      "9": "milk_carafe_hot_clean",
+      "11": "milk_carafe_cold",
+      "15": "milk_carafe_cold_clean"
+    }
   },
   "monitor_profile": {
     "enums": {

@@ -24,7 +24,9 @@ def test_monitor_bit_policy_reaches_the_device():
             pass
 
     dev = Device.from_map(_T(), device_map_path=str(DEVICES / "ECAM452.json"))
-    assert "choco_tank_present" in dev.monitor_bits["exclude"]
+    assert "preground_door_opened" in dev.monitor_bits["exclude"]
+    # Bit 9 is the hot milk carafe on clean here, not a chocolate tank.
+    assert dev.monitor_bits["switch_names"]["9"] == "milk_carafe_hot_clean"
 
 
 def test_statistics_list_only_counters_an_eletta_publishes():

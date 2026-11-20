@@ -24,6 +24,7 @@ from cremalink.ecam import answers as ecam_answers
 from cremalink.ecam import builder as ecam_builder
 from cremalink.ecam import catalog as ecam_catalog
 from cremalink.ecam import machine_profiles as ecam_profiles_mod
+from cremalink.ecam.monitor_bits import BitDef, switch_bits
 from cremalink.ecam import params as ecam_params
 from cremalink.ecam import profiles as ecam_profile_parser
 from cremalink.ecam import settings as ecam_settings
@@ -178,9 +179,11 @@ class Device:
     settings_datapoints: list[str] = field(default_factory=list)
     catalog_datapoints: list[str] = field(default_factory=list)
     #: Per-model monitor-bit policy from the device map: ``exclude`` (bits the
-    #: model does not have) and ``disabled_by_default`` (bits that may exist
-    #: but are unverified). Empty = every documented bit applies.
-    monitor_bits: dict[str, list[str]] = field(default_factory=dict)
+    #: model does not have), ``disabled_by_default`` (bits that may exist
+    #: but are unverified) and ``switch_names`` (switch bits that mean
+    #: something else on this model, ``{bit: key}``). Empty = every
+    #: documented bit applies as documented.
+    monitor_bits: dict[str, Any] = field(default_factory=dict)
     model_ref: dict[str, Any] = field(default_factory=dict)
     # Recipe index -> beverage id, in machine order (verified Soul table).
     recipe_beverage_order: list[int] = field(default_factory=list)
@@ -195,9 +198,10 @@ class Device:
     #: (ECAM452), so a shorter window reported accepted writes as failed
     #: and resent them. A confirmed write still returns as soon as seen.
     write_confirm_seconds: float = 45.0
-    #: Confirmation window for custom recipes: the app waits up to 90 s for
-    #: the machine's answer before it calls a recipe failed.
-    custom_recipe_confirm_seconds: float = 90.0
+    #: Confirmation window for saved recipes (custom and profile): the app
+    #: waits up to 90 s for the machine's answer before it calls a recipe
+    #: failed; right after a restart a profile save took longer than 45 s.
+    recipe_confirm_seconds: float = 90.0
     # Internal per-device session/response state (never shared).
     _session_gate: SessionGate | None = field(default=None, init=False, repr=False)
     # Last 0xA9-acknowledged profile index (0 = none acked yet).
@@ -557,6 +561,11 @@ class Device:
         """
         return self.transport.get_monitor()
 
+    @property
+    def switch_bits(self) -> dict[int, BitDef]:
+        """This model's switch bits: the documented ones with its own names applied."""
+        return switch_bits(self.monitor_bits.get("switch_names"))
+
     def get_monitor(self) -> MonitorView:
         """
         Retrieves and parses monitoring data into a structured, human-readable view.
@@ -565,7 +574,11 @@ class Device:
             A `MonitorView` instance containing parsed status information.
         """
         snapshot = self.get_monitor_snapshot()
-        return MonitorView(snapshot=snapshot, profile=self.monitor_profile)
+        return MonitorView(
+            snapshot=snapshot,
+            profile=self.monitor_profile,
+            switch_bits=self.switch_bits,
+        )
 
     def get_monitor_frame(self) -> MonitorFrame | None:
         """
@@ -2673,7 +2686,7 @@ class Device:
             and not (cold and tag in ecam_builder.COLD_SAVE_DROP_TAGS)
             and not (not cold and beverage_id == 200 and tag == 2)
         }
-        deadline = time.monotonic() + self.write_confirm_seconds
+        deadline = time.monotonic() + self.recipe_confirm_seconds
         while time.monotonic() < deadline:
             if self._recipe_matches(0, beverage_id, profile_slot, wanted):
                 return True
@@ -2795,7 +2808,7 @@ class Device:
         self, slot, beverage_id, profile_slot, wanted, expected_name
     ) -> bool:
         """Read recipe values (and name) back; ``True`` when they match what was written."""
-        deadline = time.monotonic() + self.custom_recipe_confirm_seconds
+        deadline = time.monotonic() + self.recipe_confirm_seconds
         values_ok = expected_name is None and not wanted
         name_ok = expected_name is None
         while time.monotonic() < deadline and not (values_ok and name_ok):

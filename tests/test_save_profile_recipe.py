@@ -101,7 +101,7 @@ class _Machine(CloudLikeTransport):
     def send_command(self, command, alternative_property=None):
         frame = base64.b64decode(command)
         result = super().send_command(command, alternative_property)
-        if len(frame) < 5:
+        if len(frame) < 5 or frame[0] != 0x0D:  # app id registration, not a machine frame
             return result
         frame = frame[: frame[1] + 1]
         if frame[2] == 0x83 and self.applies and frame[-3] & 3 == 1:
@@ -127,6 +127,7 @@ def _device(**kw):
     machine = _Machine(**kw)
     dev = Device.from_map(machine, device_map_path=str(DEVICES / "ECAM452.json"))
     dev.write_confirm_seconds = 4.0
+    dev.recipe_confirm_seconds = 4.0
     dev.app_id_confirm_seconds = 0.0
     dev.app_id_confirm_own_seconds = 0.0
     dev.app_id_confirm_poll = 0.0
