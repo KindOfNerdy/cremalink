@@ -170,7 +170,7 @@ def test_unconfirmed_registration_falls_back_to_foreign_id():
 
     dev.send_command("0d07840f02015512")
 
-    assert cloud.registrations() == 1
+    assert cloud.registrations() == 2  # first attempt plus one re-send
     assert cloud.last_trailer() == FOREIGN_HEX
 
 
@@ -255,5 +255,38 @@ def test_unconfirmed_registration_checks_only_a_few_times(monkeypatch):
     with pytest.raises(ConnectionError):
         dev.send_command("0d07840f02015512")
 
-    # 10 s window with checks every 3 s: a handful of reads, not one per second.
-    assert lan.reads <= 10
+    # 25 s window with checks every 3 s: a handful of reads, not one per second.
+    assert lan.reads <= 15
+
+
+def test_keep_registration_alive_registers_when_stale():
+    # A gated keep-alive re-establishes a lapsed registration (app_id 0),
+    # so a later real command does not have to register from cold.
+    cloud = FakeCloud(app_id="0")
+    dev = _device(cloud)
+    dev.registration_keepalive_seconds = 100.0
+    dev._app_id_refreshed_at = 0.0  # never refreshed within this process
+    dev.keep_registration_alive()
+    assert cloud.registrations() >= 1
+
+
+def test_keep_registration_alive_is_a_noop_while_fresh():
+    import time
+
+    cloud = FakeCloud(app_id=str(OWN))
+    dev = _device(cloud)
+    dev.registration_keepalive_seconds = 100.0
+    dev._app_id_refreshed_at = time.time()  # just refreshed -> still warm
+    before = len(cloud.sent)
+    dev.keep_registration_alive()
+    assert len(cloud.sent) == before
+
+
+def test_register_resends_once_within_the_window(monkeypatch):
+    # A dropped first registration must be re-sent before giving up.
+    cloud = FakeCloud(app_id="0", machine_answers=False)  # never confirms
+    dev = _device(cloud)
+    dev.app_id_confirm_seconds = 0.2
+    dev.app_id_confirm_poll = 0.01
+    assert dev._register_and_confirm(0.2) is False
+    assert cloud.registrations() >= 2  # first attempt plus one resend

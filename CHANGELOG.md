@@ -4,6 +4,7 @@
 
 Changes since 2.0.0.dev8:
 
+- **Sturdier app-id registration over the cloud:** the confirm window is 25 s instead of 10 s, a registration that gets no echo is re-sent once halfway through, and `Device.keep_registration_alive()` sends a light gated frame before the registration lapses (a plain monitor read does not keep it alive), so commands no longer hit a cold registration after a restart or idle time.
 - **A just-saved custom recipe confirms again.** The save wrote the recipe, but the read-back could not find a slot that was empty when the catalogue was seeded, so it reported "not confirmed". The value datapoint of a custom slot is now resolved deterministically.
 - **Brewing a custom recipe now actually starts.** The `0x83` brew trailer's low two bits are the operation (prepare/save/delete), not an accessory; a custom recipe has no command-map entry, so the brew used to send operation 0 (delete) and the machine silently ignored it. The field is now named `operation` and a brew always sends `PREPARE` (2).
 - **Saved recipes get 90 s to confirm** (`recipe_confirm_seconds`, custom recipes and `save_profile_recipe`), like the app; other writes keep 45 s.

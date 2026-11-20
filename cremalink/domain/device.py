@@ -271,10 +271,18 @@ class Device:
     #: a registration older than this is renewed instead of refreshed.
     app_id_refresh_seconds: float = 240.0
     #: How long to wait for the machine to confirm a registration, and the
-    #: spacing of the checks while waiting (the app checks once after a few
-    #: seconds; a few spaced reads keep the request count low).
-    app_id_confirm_seconds: float = 10.0
+    #: spacing of the checks while waiting. Over the cloud the echo can take
+    #: well over 10 s (seen live: a brew's registration missed a 10 s window
+    #: while the next one 50 min later made it), so the window is generous and
+    #: the registration frame is re-sent halfway through in case the first was
+    #: dropped.
+    app_id_confirm_seconds: float = 25.0
     app_id_confirm_poll: float = 3.0
+    #: Keep the registration warm: a gated refresh frame is sent when the last
+    #: one is older than this, so the machine never lets the registration lapse
+    #: (~300 s) and a real command never has to re-register from cold. Must be
+    #: below ``app_id_refresh_seconds``.
+    registration_keepalive_seconds: float = 180.0
     #: Shorter wait when the cloud already shows our id: a machine that
     #: still holds it republishes nothing, so the wait only costs time
     #: (seen live: no answer within 10 s). Real confirmations took 3–5 s.
@@ -410,6 +418,27 @@ class Device:
     def refresh_monitor(self) -> Any:
         """Requests a refresh of the device's monitoring data."""
         return self._upstream_call(self.transport.refresh_monitor)
+
+    def keep_registration_alive(self) -> None:
+        """Keep the app-id registration warm by sending a light gated frame.
+
+        The machine drops its registration ~300 s after the last gated frame;
+        once dropped, the next real command has to re-register and may be
+        ignored while that is unconfirmed (seen live after a restart). Calling
+        this on every coordinator poll re-establishes the registration right
+        after a restart and keeps it from lapsing, so commands land at once.
+        A no-op while the registration is still fresh, and a plain monitor read
+        (``get_monitor``) does NOT keep it warm — only a gated frame does.
+        """
+        if time.time() - self._app_id_refreshed_at < self.registration_keepalive_seconds:
+            return
+        command = self.command_map.get("refresh", {}).get("command")
+        if not command:
+            return
+        try:
+            self._send_gated(bytes.fromhex(command))
+        except (OSError, ValueError, RuntimeError) as err:
+            logger.debug("registration keep-alive failed: %s", err)
 
     def get_properties(self) -> Any:
         """Fetches all available properties from the device."""
@@ -636,7 +665,9 @@ class Device:
             if value == own
             else self.app_id_confirm_seconds
         )
-        if self._register_and_confirm(timeout):
+        # Re-sending only helps while waiting for an echo; a machine that
+        # already holds our id republishes nothing (the short own-id wait).
+        if self._register_and_confirm(timeout, resend=value != own):
             self._app_id_refreshed_at = self._app_id_last_refresh_frame = time.time()
             return APP_ID_HEX
 
@@ -661,7 +692,7 @@ class Device:
         logger.warning("app id registration not confirmed by the machine")
         return None
 
-    def _register_and_confirm(self, timeout: float) -> bool:
+    def _register_and_confirm(self, timeout: float, *, resend: bool = True) -> bool:
         """Register our app id and wait up to ``timeout`` s for the machine.
 
         Confirmed once ``app_id`` shows our id and either it changed to our
@@ -676,10 +707,16 @@ class Device:
         monitor_seen = self._property_updated_at(monitor)
         self._register_app_id(APP_ID_HEX)
         deadline = time.monotonic() + timeout
+        resent = not resend
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0 or not self._machine_reachable():
                 return False
+            if not resent and remaining <= timeout / 2:
+                # The first registration can be dropped; re-send once (the
+                # app re-sends on no reply too) before giving up.
+                self._register_app_id(APP_ID_HEX)
+                resent = True
             time.sleep(min(self.app_id_confirm_poll, remaining))
             value, app_id_updated = self._app_id_property()
             if value != own:
