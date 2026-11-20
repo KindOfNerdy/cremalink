@@ -532,7 +532,7 @@ class Device:
             recipe,
             self._profile(),
             profile_slot=slot,
-            accessory=int(entry.get("accessory", 0)),
+            operation=ecam_builder.OPERATION_PREPARE,
         )
         return self._send_gated(frame)
 
@@ -1231,7 +1231,7 @@ class Device:
         beverage_id: int,
         recipe: bytes | None = None,
         profile_slot: int | None = None,
-        accessory: int = 0,
+        operation: int = ecam_builder.OPERATION_PREPARE,
         *,
         overrides: Mapping[int, int] | None = None,
         action: int | None = None,
@@ -1267,8 +1267,6 @@ class Device:
             if action is None
             else int(action)
         )
-        if not accessory:
-            accessory = int(entry.get("accessory", 0))
         bean = ecam_params.is_bean_beverage(beverage_id)
         if bean:
             action_i |= 0x80  # APK ``l0`` fromBeanSystem flag (research R10)
@@ -1287,7 +1285,7 @@ class Device:
                 recipe,
                 self._profile(),
                 profile_slot=slot,
-                accessory=accessory,
+                operation=operation,
             )
             return self._send_gated(frame)
         return self._send_gated(
@@ -1295,7 +1293,7 @@ class Device:
                 beverage_id,
                 action_i,
                 slot,
-                accessory,
+                operation,
                 recipe=recipe,
                 values=values,
                 params=params,
@@ -1326,7 +1324,7 @@ class Device:
         beverage_id: int,
         action: int,
         slot: int,
-        accessory: int,
+        operation: int,
         *,
         recipe: bytes | None,
         values: dict[int, int] | None,
@@ -1345,7 +1343,7 @@ class Device:
             values,
             self._profile(),
             profile_slot=slot,
-            accessory=accessory,
+            operation=operation,
         )
 
     @staticmethod
@@ -1676,7 +1674,7 @@ class Device:
             ecam_builder.DEFAULT_RECIPE,
             self._profile(),
             profile_slot=1,
-            accessory=2,
+            operation=ecam_builder.OPERATION_PREPARE,
         )
         return self._send_gated(frame)
 
@@ -2782,7 +2780,7 @@ class Device:
                 params,
                 profile,
                 profile_slot=profile_slot,
-                accessory=ecam_builder.OPERATION_PREPARE_AND_SAVE,
+                operation=ecam_builder.OPERATION_PREPARE_AND_SAVE,
             )
         else:
             frame = ecam_builder.build_save_recipe(

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import requests
 from cremalink.core.binary import crc16_ccitt
-from cremalink.domain.device import Device
+from cremalink.domain.device import Device, RecipeParams
 
 DEVICES = Path(__file__).resolve().parents[1] / "cremalink" / "devices"
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "ecam"
@@ -147,7 +147,7 @@ class TestSessionGate:
 class TestBrewAndPower:
     def test_brew_explicit_recipe(self):
         device = _device()
-        device.brew(0x07, b"\x01\x00\x28\x1b\x01\x02\x04", profile_slot=1, accessory=2)
+        device.brew(0x07, b"\x01\x00\x28\x1b\x01\x02\x04", profile_slot=1, operation=2)
         frame = _sent_frame(device)[:-4]  # strip 4B timestamp
         assert frame[:4] == b"\x0d\x0f\x83\xf0"
         assert frame[4] == 0x07
@@ -166,11 +166,32 @@ class TestBrewAndPower:
         frame = _sent_frame(device)[:-4]
         # TLVs of the a6f0 blob minus drop tags {0x08, 0x19}.
         assert frame[6:-3] == bytes.fromhex("01 00 28 1b 01 02 04 04 00")
-        # (slot 1 << 2) | mode 2 — the trailer's low bits are the m6.b
-        # dispense mode (PREPARE_BEVERAGE=2), read from the command-map
-        # "accessory" field; brews must not send mode 0 (research.md R2).
+        # (slot 1 << 2) | operation 2 — the trailer's low bits are the m6.b
+        # dispense operation, always PREPARE_BEVERAGE (2) for a brew; a brew
+        # must never send operation 0 (= DELETE, research.md R2).
         assert frame[-3] == 0x06
         assert transport.requested_properties == ["d039_1_rec_espresso"]
+
+    def test_custom_recipe_brew_sends_prepare_not_delete(self):
+        # A custom recipe (id 230+) has no command-map entry, so the brew
+        # once fell back to operation 0 (= DELETE): the machine took the
+        # frame but never started. A brew must always send PREPARE (2).
+        device = _device()
+        device.brew(
+            230,
+            params=RecipeParams(
+                profile_slot=1,
+                beverage_id=230,
+                values={1: 50},
+                source="profile",
+                bounds={},
+            ),
+            profile_slot=1,
+        )
+        frame = _sent_frame(device)[:-4]
+        assert frame[0] == 0x0D and frame[2:4] == b"\x83\xf0"
+        assert frame[4] == 230
+        assert frame[-3] & 0x03 == 0x02  # operation PREPARE, not DELETE
 
     def test_brew_unknown_recipe_fails(self):
         device = _device()

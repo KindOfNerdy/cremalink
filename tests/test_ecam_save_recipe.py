@@ -31,7 +31,7 @@ def test_save_recipe_frame():
 
 def test_a_normal_brew_uses_the_prepare_operation():
     frame = build_brew_params(
-        1, 1, {15: 100}, STRIKER, profile_slot=1, accessory=OPERATION_PREPARE
+        1, 1, {15: 100}, STRIKER, profile_slot=1, operation=OPERATION_PREPARE
     )
     assert frame[-3] == 0x06
 

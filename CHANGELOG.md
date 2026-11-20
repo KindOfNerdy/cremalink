@@ -4,6 +4,7 @@
 
 Changes since 2.0.0.dev8:
 
+- **Brewing a custom recipe now actually starts.** The `0x83` brew trailer's low two bits are the operation (prepare/save/delete), not an accessory; a custom recipe has no command-map entry, so the brew used to send operation 0 (delete) and the machine silently ignored it. The field is now named `operation` and a brew always sends `PREPARE` (2).
 - **Saved recipes get 90 s to confirm** (`recipe_confirm_seconds`, custom recipes and `save_profile_recipe`), like the app; other writes keep 45 s.
 - **Model-specific switch bits:** a device map can name switch bits that mean something else on that model (`monitor_bits.switch_names`); `Device.switch_bits` and `MonitorView.switch_states()` use them. Eletta Explore (ECAM452): bit 8 hot milk carafe, 9 hot carafe on clean, 11 cold milk carafe, 15 cold carafe on clean (checked live).
 - **Keep changed values of a standard drink in the profile:** `Device.save_profile_recipe(beverage_id, params)`

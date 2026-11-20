@@ -46,7 +46,7 @@ def _rebuild_entry(entry: dict, captured: bytes) -> bytes:
         recipe,
         NON_STRIKER,
         profile_slot=entry["profile_slot"],
-        accessory=entry["accessory"],
+        operation=entry["accessory"],
     )
 
 
@@ -91,7 +91,7 @@ def test_ecam452_espresso_uses_machine_preset_not_fixed_volume():
         bytes.fromhex(entry["recipe"]),
         STRIKER,
         profile_slot=entry["profile_slot"],
-        accessory=entry["accessory"],
+        operation=entry["accessory"],
     )
     # Same short form as double_espresso: no coffee_ml TLV, so the machine
     # pours its stored espresso volume instead of a hard-coded 126 ml.

@@ -135,9 +135,9 @@ def test_merge_rejects_u16_overflow_on_u8_tag():
 
 def test_build_brew_params_parity_with_build_brew():
     params = {1: 80, 2: 4, 27: 2}
-    frame = build_brew_params(7, 1, params, PROFILE, profile_slot=1, accessory=2)
+    frame = build_brew_params(7, 1, params, PROFILE, profile_slot=1, operation=2)
     expected = build_brew(
-        7, 1, bytes([1, 0, 80, 2, 4, 27, 2]), PROFILE, profile_slot=1, accessory=2
+        7, 1, bytes([1, 0, 80, 2, 4, 27, 2]), PROFILE, profile_slot=1, operation=2
     )
     assert frame == expected
     # 0D LEN 83 F0 07 01 <TLVs> <06> <crc>
@@ -161,7 +161,7 @@ def test_build_brew_params_e0_filter():
 def test_build_brew_params_bean_flag_and_taste_retained():
     # bev 200 → action|0x80; param 2 (intensity) retained (research.md R10).
     frame = build_brew_params(
-        0xC8, 1, {1: 48, 2: 3, 27: 2}, PROFILE, profile_slot=1, accessory=2
+        0xC8, 1, {1: 48, 2: 3, 27: 2}, PROFILE, profile_slot=1, operation=2
     )
     assert frame[4] == 0xC8
     assert frame[5] == 0x81

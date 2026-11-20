@@ -92,7 +92,7 @@ BREW_KEEP_EXTENDED = frozenset({27, 28, 31, 33, 38, 39})
 
 #: Default recipe TLVs (captured hot-water command: 250 ml, temp index 1).
 #: The trailing brew trailer byte is NOT part of the recipe — ``build_brew``
-#: appends ``(profile_slot<<2)|accessory`` itself. Opaque bytes — brews are
+#: appends ``(profile_slot<<2)|operation`` itself. Opaque bytes — brews are
 #: normally built from the machine's own ``0xA6`` recipe or a command-map
 #: entry; this is only a safe fallback.
 DEFAULT_RECIPE = bytes([0x0F, 0x00, 0xFA, 0x1B, 0x01])
@@ -165,6 +165,16 @@ def verify_frame(frame: bytes | bytearray) -> bool:
     return crc16_ccitt(frame[:-2]) == frame[-2:]
 
 
+#: The low two bits of a ``0x83`` frame's last byte (``(profile<<2)|operation``) say what
+#: the machine does with the recipe: delete it, save it, prepare (brew) it, or prepare and
+#: save it (the app's ``DELETE_BEVERAGE``/``SAVE_BEVERAGE``/``PREPARE_BEVERAGE``/
+#: ``PREPARE_AND_SAVE_BEVERAGE``). A normal brew is ``PREPARE``.
+OPERATION_DELETE = 0
+OPERATION_SAVE = 1
+OPERATION_PREPARE = 2
+OPERATION_PREPARE_AND_SAVE = 3
+
+
 def build_brew(
     beverage_id: int,
     action: int | BrewAction,
@@ -172,13 +182,15 @@ def build_brew(
     profile: MachineProfile,
     *,
     profile_slot: int = 0,
-    accessory: int = 0,
+    operation: int = OPERATION_PREPARE,
 ) -> bytes:
     """Build a ``0x83`` brew frame.
 
-    ``0D LEN 83 F0 <bev> <action> <recipe…> <(profile_slot<<2)|accessory>``
-    — the frame names its profile in the trailer byte; the recipe bytes
-    must be that same profile's values (``0xA6`` reads are profile-scoped).
+    ``0D LEN 83 F0 <bev> <action> <recipe…> <(profile_slot<<2)|operation>``
+    — the trailer's low two bits carry the operation (``PREPARE`` to brew;
+    ``SAVE``/``DELETE``/``PREPARE_AND_SAVE`` for recipe management), the rest
+    the profile slot. The recipe bytes must be that same profile's values
+    (``0xA6`` reads are profile-scoped).
     """
     _require_profile(profile)
     if not 0 <= beverage_id <= 0xFF:
@@ -191,7 +203,7 @@ def build_brew(
         raise ValueError(f"recipe payload too large: {len(recipe_b)} bytes")
     if not 0 <= profile_slot <= 0x3F:
         raise ValueError(f"profile_slot out of range: {profile_slot!r}")
-    tail = (profile_slot << 2) | (accessory & 0x03)
+    tail = (profile_slot << 2) | (operation & 0x03)
     return _frame(
         REQ_BREW, 0xF0, bytes([beverage_id, action_i]) + recipe_b + bytes([tail])
     )
@@ -244,7 +256,7 @@ def build_brew_params(
     profile: MachineProfile,
     *,
     profile_slot: int = 0,
-    accessory: int = 0,
+    operation: int = OPERATION_PREPARE,
 ) -> bytes:
     """Build a ``0x83`` brew frame straight from a ``{param_id: value}`` map.
 
@@ -278,19 +290,9 @@ def build_brew_params(
         bytes(recipe),
         profile,
         profile_slot=profile_slot,
-        accessory=accessory,
+        operation=operation,
     )
 
-
-#: The low two bits of a ``0x83`` frame's last byte (``(profile<<2)|operation``) say what the
-#: machine does with the recipe: delete it, save it, prepare it, or prepare and save it
-#: (the app's ``DELETE_BEVERAGE``/``SAVE_BEVERAGE``/``PREPARE_BEVERAGE``/
-#: ``PREPARE_AND_SAVE_BEVERAGE``). A normal brew is 2; ``build_brew``'s ``accessory``
-#: argument is this field.
-OPERATION_DELETE = 0
-OPERATION_SAVE = 1
-OPERATION_PREPARE = 2
-OPERATION_PREPARE_AND_SAVE = 3
 
 #: Custom recipe names are at most 10 characters (20 bytes UTF-16BE).
 RECIPE_NAME_CHARS = 10
@@ -362,7 +364,7 @@ def build_save_recipe(
         bytes(recipe),
         profile,
         profile_slot=profile_slot,
-        accessory=OPERATION_SAVE,
+        operation=OPERATION_SAVE,
     )
 
 
@@ -378,7 +380,7 @@ def build_delete_recipe(
         {},
         profile,
         profile_slot=profile_slot,
-        accessory=OPERATION_DELETE,
+        operation=OPERATION_DELETE,
     )
 
 
