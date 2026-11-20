@@ -195,6 +195,9 @@ class Device:
     #: (ECAM452), so a shorter window reported accepted writes as failed
     #: and resent them. A confirmed write still returns as soon as seen.
     write_confirm_seconds: float = 45.0
+    #: Confirmation window for custom recipes: the app waits up to 90 s for
+    #: the machine's answer before it calls a recipe failed.
+    custom_recipe_confirm_seconds: float = 90.0
     # Internal per-device session/response state (never shared).
     _session_gate: SessionGate | None = field(default=None, init=False, repr=False)
     # Last 0xA9-acknowledged profile index (0 = none acked yet).
@@ -2792,7 +2795,7 @@ class Device:
         self, slot, beverage_id, profile_slot, wanted, expected_name
     ) -> bool:
         """Read recipe values (and name) back; ``True`` when they match what was written."""
-        deadline = time.monotonic() + self.write_confirm_seconds
+        deadline = time.monotonic() + self.custom_recipe_confirm_seconds
         values_ok = expected_name is None and not wanted
         name_ok = expected_name is None
         while time.monotonic() < deadline and not (values_ok and name_ok):

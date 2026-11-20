@@ -4,6 +4,7 @@
 
 Changes since 2.0.0.dev8:
 
+- **Custom recipes get 90 s to confirm** (`custom_recipe_confirm_seconds`), like the app; other writes keep 45 s.
 - **Keep changed values of a standard drink in the profile:** `Device.save_profile_recipe(beverage_id, params)`
   saves like the app's brew-screen save (`SAVE_BEVERAGE`) and confirms by reading back; cold and cold to-go
   drinks are saved without their fixed amounts, as the app does (`beverage_type()` sorts drinks like the app).

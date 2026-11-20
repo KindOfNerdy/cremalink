@@ -88,6 +88,7 @@ def _device(*, applies=True):
     machine = _Eletta(applies=applies)
     dev = Device.from_map(machine, device_map_path=str(DEVICES / "ECAM452.json"))
     dev.write_confirm_seconds = 5.0
+    dev.custom_recipe_confirm_seconds = 5.0
     dev.app_id_confirm_seconds = 0.0
     dev.app_id_confirm_own_seconds = 0.0
     dev.app_id_confirm_poll = 0.0
