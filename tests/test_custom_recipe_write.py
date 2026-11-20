@@ -189,3 +189,15 @@ def test_delete_leaves_the_favourites_alone_when_the_drink_is_not_in_them():
     dev.set_favorite_beverages = lambda ids, profile=None: written.append(ids) or True
     dev.delete_custom_recipe(6, profile_slot=1)
     assert written == []
+
+
+def test_recipe_property_name_falls_back_for_a_just_programmed_slot():
+    # A slot programmed after the catalogue was seeded is not indexed; the
+    # deterministic custom datapoint lets the save still confirm (issue 20.11.).
+    dev, machine = _device()
+    dev._recipe_datapoints = {}
+    dev.recipe_beverage_order = []
+    dev.catalog_datapoints = []
+    assert dev._recipe_property_name(1, 235) == "d245_rec_custom_6"
+    # A slot whose datapoint the machine never published stays unresolved.
+    assert dev._recipe_property_name(1, 230) is None

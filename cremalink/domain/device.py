@@ -1122,6 +1122,15 @@ class Device:
             indexed = self._recipe_datapoints.get((1, beverage_id))
         if indexed is not None:
             return indexed
+        if beverage_id in ecam_catalog.CUSTOM_SLOT_IDS:
+            # A just-programmed slot is not in the seeded catalogue yet, so the
+            # lookups above miss it. Its value datapoint is deterministic
+            # (``d240_rec_custom_1`` … ``d245_rec_custom_6``) and lets the save
+            # confirm by reading the written values back.
+            slot = beverage_id - _CUSTOM_SLOT_BASE
+            name = f"d{239 + slot:03d}_rec_custom_{slot}"
+            if self._property_entry(name) is not None:
+                return name
         if not self.recipe_beverage_order or not self.catalog_datapoints:
             return None
         try:
