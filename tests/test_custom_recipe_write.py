@@ -114,14 +114,15 @@ def test_save_creates_the_recipe_and_confirms_it():
     assert len(saves) == 1 and saves[0][-3] == (1 << 2) | 1  # SAVE, nothing is poured
 
 
-def test_save_and_brew_uses_prepare_and_save():
+def test_save_without_confirm_returns_at_once_and_confirms_later():
     dev, machine = _device()
     assert dev.save_custom_recipe(
-        6, "TestWasser", 12, HOT_WATER, brew=True, profile_slot=1
+        6, "TestWasser", 12, HOT_WATER, profile_slot=1, confirm=False
     )
-    brew = next(f[: f[1] + 1] for f, _ in machine.sent if f[2] == 0x83)
-    assert brew[5] == 1  # START
-    assert brew[-3] & 0x03 == 3
+    saves = [f[: f[1] + 1] for f, _ in machine.sent if f[2] == 0x83]
+    assert len(saves) == 1 and saves[0][-3] & 0x03 == 1  # SAVE only, like the app
+    assert dev.confirm_custom_recipe(6, "TestWasser", 12, HOT_WATER, profile_slot=1)
+    assert dev.custom_recipe_names()[235] == "TestWasser"
 
 
 def test_an_ignored_write_is_reported():

@@ -2708,12 +2708,16 @@ class Device:
         params: Mapping[int, int],
         *,
         profile_slot: int | None = None,
+        confirm: bool = True,
     ) -> bool:
         """Keep ``params`` as the profile's stored recipe of a standard drink.
 
         Like the app's "save" on the brew screen (``SAVE_BEVERAGE``): cold and cold
         to-go drinks are saved without their fixed amounts. Confirmed by reading the
-        recipe back. Custom recipes go through :meth:`save_custom_recipe`.
+        recipe back (:meth:`confirm_profile_recipe`) unless ``confirm`` is False:
+        then it returns right after sending, so a brew can follow at once (the app
+        sends save and brew as two frames without waiting). Custom recipes go
+        through :meth:`save_custom_recipe`.
         """
         if beverage_id in ecam_catalog.CUSTOM_SLOT_IDS:
             raise ValueError("custom recipes are saved with save_custom_recipe")
@@ -2723,6 +2727,26 @@ class Device:
             beverage_id, params, self._profile(), profile_slot=profile_slot, cold=cold
         )
         self._send_gated(frame)
+        if not confirm:
+            return True
+        return self.confirm_profile_recipe(beverage_id, params, profile_slot=profile_slot)
+
+    def confirm_profile_recipe(
+        self,
+        beverage_id: int,
+        params: Mapping[int, int],
+        *,
+        profile_slot: int | None = None,
+        timeout: float | None = None,
+    ) -> bool:
+        """Wait until the profile's stored recipe shows ``params`` (as saved).
+
+        ``False`` if it does not within ``timeout`` seconds (default
+        :attr:`recipe_confirm_seconds`; while a drink runs the machine republishes
+        later, so a save followed by a brew needs longer).
+        """
+        profile_slot = profile_slot or self.current_profile or 1
+        cold = ecam_builder.beverage_type(beverage_id) in ("cold", "to_go_cold")
         wanted = {
             tag: value
             for tag, value in params.items()
@@ -2730,7 +2754,9 @@ class Device:
             and not (cold and tag in ecam_builder.COLD_SAVE_DROP_TAGS)
             and not (not cold and beverage_id == 200 and tag == 2)
         }
-        deadline = time.monotonic() + self.recipe_confirm_seconds
+        deadline = time.monotonic() + (
+            self.recipe_confirm_seconds if timeout is None else timeout
+        )
         while time.monotonic() < deadline:
             if self._recipe_matches(0, beverage_id, profile_slot, wanted):
                 return True
@@ -2799,15 +2825,16 @@ class Device:
         icon: int,
         params: Mapping[int, int],
         *,
-        brew: bool = False,
         profile_slot: int | None = None,
+        confirm: bool = True,
     ) -> bool:
         """Create or change custom recipe ``slot`` (1-6; beverage id 229 + slot).
 
-        Writes the recipe values (``0x83`` with the SAVE operation; with
-        ``brew=True`` PREPARE_AND_SAVE, which also pours it) and then name and
-        picture (``0xAB``). Confirmed by reading both back: ``True`` once the
-        machine reports the new values and name, ``False`` otherwise. ``params`` is
+        Like the app: the recipe values (``0x83`` with the SAVE operation), then
+        name and picture (``0xAB``). Confirmed by reading both back
+        (:meth:`confirm_custom_recipe`): ``True`` once the machine reports the new
+        values and name, ``False`` otherwise. With ``confirm=False`` it returns right
+        after sending, so a brew can follow at once. ``params`` is
         ``{param id: value}`` (water in ml: ``{15: 50}`` ...). Raises ``ValueError``
         for an invalid slot, name or picture.
         """
@@ -2819,29 +2846,41 @@ class Device:
         name_frame = ecam_builder.build_recipe_name_write(
             slot, name, icon, profile
         )  # validates
-        if brew:
-            frame = ecam_builder.build_brew_params(
-                beverage_id,
-                ecam_builder.BrewAction.START,
-                params,
-                profile,
-                profile_slot=profile_slot,
-                operation=ecam_builder.OPERATION_PREPARE_AND_SAVE,
-            )
-        else:
-            frame = ecam_builder.build_save_recipe(
-                beverage_id, params, profile, profile_slot=profile_slot
-            )
+        frame = ecam_builder.build_save_recipe(
+            beverage_id, params, profile, profile_slot=profile_slot
+        )
         self._send_gated(frame)
         time.sleep(self.response_poll)
         self._send_gated(name_frame)
+        if not confirm:
+            return True
+        return self.confirm_custom_recipe(
+            slot, name, icon, params, profile_slot=profile_slot
+        )
+
+    def confirm_custom_recipe(
+        self,
+        slot: int,
+        name: str,
+        icon: int,
+        params: Mapping[int, int],
+        *,
+        profile_slot: int | None = None,
+        timeout: float | None = None,
+    ) -> bool:
+        """Wait until custom recipe ``slot`` shows ``params``, ``name`` and ``icon``.
+
+        ``timeout`` as in :meth:`confirm_profile_recipe`.
+        """
+        beverage_id = _CUSTOM_SLOT_BASE + slot
+        profile_slot = profile_slot or self.current_profile or 1
         wanted = {
             tag: value
             for tag, value in params.items()
             if ecam_builder.brew_param_included(tag)
         }
         confirmed = self._confirm_custom_recipe(
-            slot, beverage_id, profile_slot, wanted, (name, icon)
+            slot, beverage_id, profile_slot, wanted, (name, icon), timeout
         )
         if confirmed:
             self._custom_names[beverage_id] = name
@@ -2849,10 +2888,12 @@ class Device:
         return confirmed
 
     def _confirm_custom_recipe(
-        self, slot, beverage_id, profile_slot, wanted, expected_name
+        self, slot, beverage_id, profile_slot, wanted, expected_name, timeout=None
     ) -> bool:
         """Read recipe values (and name) back; ``True`` when they match what was written."""
-        deadline = time.monotonic() + self.recipe_confirm_seconds
+        deadline = time.monotonic() + (
+            self.recipe_confirm_seconds if timeout is None else timeout
+        )
         values_ok = expected_name is None and not wanted
         name_ok = expected_name is None
         while time.monotonic() < deadline and not (values_ok and name_ok):

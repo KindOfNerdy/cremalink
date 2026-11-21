@@ -159,3 +159,14 @@ def test_custom_recipes_are_refused():
     with pytest.raises(ValueError):
         dev.save_profile_recipe(230, {15: 50}, profile_slot=1)
     assert machine.sent == []
+
+
+def test_save_without_confirm_returns_at_once_and_confirms_later():
+    dev, machine = _device(applies=False)
+    # Sent, not waited for: a brew may follow right away (like the app).
+    assert dev.save_profile_recipe(2, {1: 150}, profile_slot=1, confirm=False) is True
+    assert machine.sent
+    assert dev.confirm_profile_recipe(2, {1: 150}, profile_slot=1) is False
+    dev, machine = _device()
+    assert dev.save_profile_recipe(2, {1: 150, 2: 4}, profile_slot=1, confirm=False) is True
+    assert dev.confirm_profile_recipe(2, {1: 150, 2: 4}, profile_slot=1) is True

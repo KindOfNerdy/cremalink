@@ -89,7 +89,7 @@ High-level `Device` methods built on it:
 | `get_setting_bits()` / `set_setting_bit(key, on)` | Boolean flags in the shared user-config param `0x003F` (beep, energy saving, …) — merged bit writes via `0x90` |
 | `read_catalog()` | Parse the recipe catalogue (`b0f0`/`a6f0`/`aaf0`/`a8f0`/`baf0` blobs) |
 | `favorite_beverages(profile)` / `set_favorite_beverages(ids, profile)` | Read a profile's favourites; write the whole list (`0xAD`), confirmed by read-back |
-| `save_custom_recipe(slot, name, icon, params, brew=False)` / `delete_custom_recipe(slot)` | Create, change or empty one of the six custom recipes (`0x83` SAVE/DELETE + `0xAB` name and picture), confirmed by read-back; build `params` from ingredients with `ecam.custom_recipe.compose_custom_recipe` |
+| `save_custom_recipe(slot, name, icon, params, confirm=True)` / `delete_custom_recipe(slot)` | Create, change or empty one of the six custom recipes (`0x83` SAVE/DELETE + `0xAB` name and picture), confirmed by read-back; build `params` from ingredients with `ecam.custom_recipe.compose_custom_recipe` |
 | `save_profile_recipe(beverage_id, params)` | Keep changed values of a standard drink in the active profile (`0x83` SAVE; cold drinks without their fixed amounts, like the app) |
 
 **Writes are session-gated**: the device announces a ~300 s session

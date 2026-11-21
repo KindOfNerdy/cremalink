@@ -4,6 +4,8 @@
 
 Changes since 2.0.0.dev8:
 
+- **Save and brew without the wait:** `save_profile_recipe(..., confirm=False)` and `save_custom_recipe(..., confirm=False)` return right after sending, so the brew can follow at once; `confirm_profile_recipe()` / `confirm_custom_recipe()` check the save afterwards (with an optional `timeout`: while a drink runs the machine shows the save later).
+- **`save_custom_recipe` no longer brews** (`brew=` removed): it always saves like the app (SAVE + name); brew afterwards with `brew()`. The combined prepare-and-save operation is not used by the app over Wi-Fi.
 - **Sturdier app-id registration over the cloud:** the confirm window is 25 s instead of 10 s, a registration that gets no echo is re-sent once halfway through, and `Device.keep_registration_alive()` sends a light gated frame before the registration lapses (a plain monitor read does not keep it alive), so commands no longer hit a cold registration after a restart or idle time.
 - **A just-saved custom recipe confirms again.** The save wrote the recipe, but the read-back could not find a slot that was empty when the catalogue was seeded, so it reported "not confirmed". The value datapoint of a custom slot is now resolved deterministically.
 - **Brewing a custom recipe now actually starts.** The `0x83` brew trailer's low two bits are the operation (prepare/save/delete), not an accessory; a custom recipe has no command-map entry, so the brew used to send operation 0 (delete) and the machine silently ignored it. The field is now named `operation` and a brew always sends `PREPARE` (2).
